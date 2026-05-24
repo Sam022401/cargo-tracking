@@ -82,9 +82,10 @@
     font-size: 12px; padding: 3px 10px; border-radius: 20px;
     font-weight: 500;
   }
-  .status-tag.pending { background: #fff3e0; color: #e67e00; }
-  .status-tag.ok { background: #e8f5e9; color: #2e7d32; }
+  .status-tag.arriving { background: #fff8e1; color: #f57f17; }
+  .status-tag.completed { background: #e8f5e9; color: #2e7d32; }
   .status-tag.fail { background: #fce4ec; color: #c62828; }
+  .status-tag.pending { background: #f3e5f5; color: #7b1fa2; }
   .card-header .meta {
     font-size: 12px; color: #9aabb8;
     display: flex; align-items: center; gap: 12px;
@@ -246,11 +247,17 @@ function calcStatus(item) {
   if (!item || item.result === false) return 'fail';
   const ev = getLatestEvent(item);
   if (!ev) return 'pending';
-  return 'ok';
+  const content = (ev.content || ev.content_loc || '');
+  // 已签收/已到港/已到目的地 → 已完成
+  if (/已签收|已到港|已到目的地|已到仓库/.test(content)) return 'completed';
+  // 预计/中转/安排/运输途中 → 快到港
+  if (/预计|中转|安排|运输途中/.test(content)) return 'arriving';
+  return 'completed';
 }
 
 function statusLabel(s) {
-  if (s === 'ok') return '运输中';
+  if (s === 'arriving') return '快到港';
+  if (s === 'completed') return '已完成';
   if (s === 'fail') return '查询失败';
   return '待更新';
 }
