@@ -567,8 +567,14 @@ function render() {
     toolbar.style.display = 'flex';
     totalCount.textContent = entries.length;
 
-    // 按 updatedAt 降序排列
-    entries.sort((a, b) => (b[1].updatedAt || '').localeCompare(a[1].updatedAt || ''));
+    // 按状态排序：已完成 → 运输中 → 快到港 → 查询失败
+    const statusPriority = { completed: 0, in_transit: 1, arriving: 2, fail: 3, pending: 4 };
+    entries.sort((a, b) => {
+      const pa = statusPriority[calcStatus(a[1].result)] ?? 99;
+      const pb = statusPriority[calcStatus(b[1].result)] ?? 99;
+      if (pa !== pb) return pa - pb;
+      return (b[1].updatedAt || '').localeCompare(a[1].updatedAt || '');
+    });
 
     let html = '';
     for (const [no, item] of entries) {
