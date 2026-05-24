@@ -153,6 +153,7 @@
     font-weight: 500;
   }
   .status-tag.arriving { background: #fff8e1; color: #f57f17; }
+  .status-tag.in_transit { background: #e3f2fd; color: #1565c0; }
   .status-tag.completed { background: #e8f5e9; color: #2e7d32; }
   .status-tag.fail { background: #fce4ec; color: #c62828; }
   .status-tag.pending { background: #f3e5f5; color: #7b1fa2; }
@@ -467,29 +468,64 @@ function getLatestEvent(item) {
   return item.dataDict.list[0];
 }
 
+function extractEstimatedDate(content) {
+  if (!content) return null;
+  // 匹配: 预计 2026-06-01、预计 06-01、预计到达时间 2026-06-01、ETA 2026-06-01
+  const m = content.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
+  if (m) {
+    const d = new Date(m[1].replace(/\//g, '-'));
+    if (!isNaN(d)) return d;
+  }
+  // 匹配 MM-DD 格式（无年份）
+  const m2 = content.match(/预计.*?(\d{1,2})[-/](\d{1,2})/);
+  if (m2) {
+    const d = new Date();
+    d.setMonth(parseInt(m2[1]) - 1, parseInt(m2[2]));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  return null;
+}
+
 function calcStatus(item) {
   if (!item || item.result === false) return 'fail';
   const ev = getLatestEvent(item);
   if (!ev) return 'pending';
   const content = (ev.content || ev.content_loc || '');
   const contentEn = (ev.content_en || '');
-  // 已签收/已到港/已到目的地 → 已完成
+
+  // 已签收/已到港 → 已完成
   if (/已签收|已到港|已到目的地|已到仓库/.test(content)) return 'completed';
   if (/delivered|signed for|arrived at (destination|warehouse)/i.test(contentEn)) return 'completed';
-  // 预计/中转/安排/运输途中 → 快到港
-  if (/预计|中转|安排|运输途中/.test(content)) return 'arriving';
-  if (/estimated|in transit|scheduled|on the way/i.test(contentEn)) return 'arriving';
-  return 'completed';
+
+  // 尝试从内容中提取预计到港日期
+  const dateText = content || contentEn;
+  const eta = extractEstimatedDate(dateText);
+
+  if (eta) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((eta - now) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays <= 3) return 'arriving';  // 快到港
+    return 'in_transit';  // 运输中
+  }
+
+  // 没有日期，根据关键词判断
+  if (/预计|中转|安排|运输途中/.test(content)) return 'in_transit';
+  if (/estimated|in transit|scheduled|on the way/i.test(contentEn)) return 'in_transit';
+  return 'in_transit';
 }
 
 function statusLabel(s) {
   if (currentLang === 'en') {
-    if (s === 'arriving') return 'In Transit';
+    if (s === 'arriving') return 'Arriving';
+    if (s === 'in_transit') return 'In Transit';
     if (s === 'completed') return 'Completed';
     if (s === 'fail') return 'Failed';
     return 'Pending';
   }
   if (s === 'arriving') return '快到港';
+  if (s === 'in_transit') return '运输中';
   if (s === 'completed') return '已完成';
   if (s === 'fail') return '查询失败';
   return '待更新';
