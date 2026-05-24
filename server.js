@@ -84,12 +84,10 @@ const server = http.createServer(async (req, res) => {
       if (!no) { res.writeHead(400); res.end(JSON.stringify({ error: '请提供单号' })); return; }
       try {
         const result = await trackQuery(no);
-        // 查询成功才保存历史（填错单号不存记录）
-        if (result.result !== false) {
-          const history = loadHistory();
-          history[no] = { ...history[no], no, result, updatedAt: new Date().toISOString() };
-          saveHistory(history);
-        }
+        // 更新历史
+        const history = loadHistory();
+        history[no] = { ...history[no], no, result, updatedAt: new Date().toISOString() };
+        saveHistory(history);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
       } catch (e) {
