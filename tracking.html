@@ -37,7 +37,7 @@
 
   /* 搜索栏 */
   .search-box {
-    display: flex; gap: 8px; margin-bottom: 20px;
+    display: flex; gap: 8px; margin-bottom: 12px;
   }
   .search-box input {
     flex: 1; padding: 11px 16px; font-size: 15px;
@@ -58,6 +58,67 @@
   }
   .btn-search:hover { background: #3a6ae0; }
   .btn-search:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* 批量查询面板 */
+  .batch-panel {
+    background: #fff; border: 1.5px solid #4a7cf7;
+    border-radius: 12px; padding: 14px 16px;
+    margin-bottom: 16px; display: none;
+  }
+  .batch-panel .batch-label {
+    font-size: 13px; font-weight: 600; color: #4a7cf7;
+    margin-bottom: 10px;
+  }
+  .batch-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 12px; max-height: 120px; overflow-y: auto;
+  }
+  .batch-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; font-size: 12px; font-family: "SF Mono", "Menlo", monospace;
+    background: #eef2ff; color: #4a7cf7; border-radius: 6px;
+  }
+  .batch-tag .remove {
+    cursor: pointer; font-size: 14px; line-height: 1; color: #9aabb8;
+    margin-left: 2px;
+  }
+  .batch-tag .remove:hover { color: #e53935; }
+  .batch-actions {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .batch-actions button {
+    padding: 7px 18px; font-size: 13px; font-weight: 500;
+    border: none; border-radius: 8px; cursor: pointer; transition: .15s;
+  }
+  .btn-batch-search {
+    background: #4a7cf7; color: #fff;
+  }
+  .btn-batch-search:hover { background: #3a6ae0; }
+  .btn-batch-search:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-batch-cancel {
+    background: transparent; color: #6b7a90;
+    border: 1px solid #d0d8e4 !important;
+  }
+  .btn-batch-cancel:hover { border-color: #9aabb8; }
+
+  /* 批量进度 */
+  .batch-progress {
+    display: none; margin-bottom: 12px;
+  }
+  .batch-progress-bar {
+    height: 4px; background: #e0e6ee; border-radius: 2px;
+    overflow: hidden; margin-bottom: 6px;
+  }
+  .batch-progress-bar .fill {
+    height: 100%; width: 0%; background: #4a7cf7;
+    border-radius: 2px; transition: width .3s;
+  }
+  .batch-progress-text {
+    font-size: 12px; color: #6b7a90;
+  }
+  .batch-progress-text .count-done { color: #4a7cf7; font-weight: 600; }
+  .batch-progress-text .count-fail { color: #e53935; }
+  .batch-progress-text .count-total { color: #1a2332; font-weight: 600; }
 
   /* 工具栏 */
   .toolbar {
@@ -192,6 +253,26 @@
     <button class="btn-search" id="btnSearch">查询</button>
   </div>
 
+  <!-- 批量查询面板 -->
+  <div class="batch-panel" id="batchPanel">
+    <div class="batch-label" id="batchLabel">📋 批量查询</div>
+    <div class="batch-tags" id="batchTags"></div>
+    <div class="batch-progress" id="batchProgress">
+      <div class="batch-progress-bar">
+        <div class="fill" id="batchProgressFill"></div>
+      </div>
+      <div class="batch-progress-text" id="batchProgressText">
+        查询中 <span class="count-done" id="batchDone">0</span>
+        / <span class="count-total" id="batchTotal">0</span>
+        <span class="count-fail" id="batchFail"></span>
+      </div>
+    </div>
+    <div class="batch-actions">
+      <button class="btn-batch-search" id="btnBatchSearch">批量查询</button>
+      <button class="btn-batch-cancel" id="btnBatchCancel">取消</button>
+    </div>
+  </div>
+
   <div class="toolbar" id="toolbar" style="display:none;">
     <span id="toolbarLabel">共 <span class="count" id="totalCount">0</span> 票</span>
     <div class="actions">
@@ -221,8 +302,21 @@ const langToggle = document.getElementById('langToggle');
 const subtitle = document.getElementById('subtitle');
 const emptyText = document.getElementById('emptyText');
 const toolbarLabel = document.getElementById('toolbarLabel');
+const batchPanel = document.getElementById('batchPanel');
+const batchTags = document.getElementById('batchTags');
+const batchLabel = document.getElementById('batchLabel');
+const btnBatchSearch = document.getElementById('btnBatchSearch');
+const btnBatchCancel = document.getElementById('btnBatchCancel');
+const batchProgress = document.getElementById('batchProgress');
+const batchProgressFill = document.getElementById('batchProgressFill');
+const batchDone = document.getElementById('batchDone');
+const batchTotal = document.getElementById('batchTotal');
+const batchFail = document.getElementById('batchFail');
+const batchProgressText = document.getElementById('batchProgressText');
 
 let currentLang = localStorage.getItem('tracking_lang') || 'zh';
+let batchNumbers = [];
+let batchRunning = false;
 
 // ---- 国际化 ----
 function t(zh, en) {
@@ -238,6 +332,10 @@ function updateLangUI() {
   emptyText.textContent = t('暂无跟踪记录，输入运单号开始查询', 'No records yet. Enter a waybill to start.');
   toolbarLabel.innerHTML = t('共 <span class="count" id="totalCount">0</span> 票', '<span class="count" id="totalCount">0</span> shipment(s)');
   btnRefreshAll.textContent = t('🔄 刷新全部', '🔄 Refresh all');
+  batchLabel.textContent = t('📋 批量查询', '📋 Batch query');
+  btnBatchSearch.textContent = t('批量查询', 'Batch query');
+  btnBatchCancel.textContent = t('取消', 'Cancel');
+  updateBatchTitle();
 }
 
 function toggleLang() {
@@ -255,6 +353,87 @@ function showToast(msg, isError) {
   toast.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ---- 批量查询 ----
+function parseBatchInput(text) {
+  // 按换行、逗号、中文逗号、分号分割，去重、去空、去前后空格
+  const parts = text.split(/[\n,，;；、\s]+/).map(s => s.trim()).filter(Boolean);
+  return [...new Set(parts)];
+}
+
+function showBatchPanel(numbers) {
+  batchNumbers = numbers;
+  batchTags.innerHTML = numbers.map(n =>
+    `<span class="batch-tag">${escHtml(n)}<span class="remove" onclick="removeBatchNo('${escHtml(n)}')">×</span></span>`
+  ).join('');
+  updateBatchTitle();
+  batchPanel.style.display = 'block';
+  batchProgress.style.display = 'none';
+  btnBatchSearch.disabled = false;
+  btnBatchSearch.textContent = t('批量查询', 'Batch query');
+  batchRunning = false;
+}
+
+function hideBatchPanel() {
+  batchPanel.style.display = 'none';
+  batchNumbers = [];
+  batchRunning = false;
+}
+
+function updateBatchTitle() {
+  if (!batchNumbers.length) return;
+  btnBatchSearch.textContent = t(`批量查询 ${batchNumbers.length} 票`, `Batch (${batchNumbers.length})`);
+}
+
+function removeBatchNo(no) {
+  batchNumbers = batchNumbers.filter(n => n !== no);
+  if (batchNumbers.length === 0) {
+    hideBatchPanel();
+    return;
+  }
+  showBatchPanel(batchNumbers);
+}
+
+async function doBatchSearch() {
+  if (batchRunning || batchNumbers.length === 0) return;
+  batchRunning = true;
+  btnBatchSearch.disabled = true;
+  btnBatchSearch.textContent = t('查询中...', 'Querying...');
+  batchProgress.style.display = 'block';
+
+  let done = 0, failed = 0;
+  const total = batchNumbers.length;
+  batchDone.textContent = '0';
+  batchTotal.textContent = total;
+  batchFail.textContent = '';
+  batchProgressFill.style.width = '0%';
+
+  for (const no of batchNumbers) {
+    try {
+      const result = await trackQuery(no);
+      if (result.result === false) failed++;
+    } catch {
+      failed++;
+    }
+    done++;
+    batchDone.textContent = done;
+    batchProgressFill.style.width = `${(done / total) * 100}%`;
+    if (failed > 0) {
+      batchFail.textContent = t(` ${failed} 失败`, ` ${failed} failed`);
+    }
+  }
+
+  batchRunning = false;
+  btnBatchSearch.disabled = false;
+  hideBatchPanel();
+  render();
+
+  if (failed === 0) {
+    showToast(t(`✅ ${total} 票全部查询成功`, `✅ ${total} shipment(s) tracked`));
+  } else {
+    showToast(t(`✅ 完成，${failed} 票查询失败`, `✅ Done, ${failed} shipment(s) failed`), true);
+  }
 }
 
 // ---- API 调用 ----
@@ -277,7 +456,7 @@ async function deleteHistory(no) {
   return res.json();
 }
 
-async function refreshAll() {
+async function refreshAllFn() {
   const res = await fetch('/api/refresh-all', { method: 'POST' });
   return res.json();
 }
@@ -454,7 +633,7 @@ btnRefreshAll.addEventListener('click', async () => {
   btnRefreshAll.disabled = true;
   btnRefreshAll.textContent = t('刷新中...', 'Refreshing...');
   try {
-    await refreshAll();
+    await refreshAllFn();
     showToast(t('✅ 全部已刷新', '✅ All refreshed'));
     render();
   } catch { showToast(t('部分刷新失败', 'Some failed'), true); render(); }
@@ -463,8 +642,50 @@ btnRefreshAll.addEventListener('click', async () => {
 });
 
 // ---- 事件绑定 ----
-btnSearch.addEventListener('click', () => doSearch(inputNo.value));
-inputNo.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(inputNo.value); });
+btnSearch.addEventListener('click', () => {
+  // 如果当前显示批量面板，先隐藏
+  if (batchPanel.style.display === 'block') hideBatchPanel();
+  doSearch(inputNo.value);
+});
+
+inputNo.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    // 检测是否可能为批量输入（包含逗号/分号等）
+    const val = inputNo.value.trim();
+    if (/[,，;；、\n]/.test(val)) {
+      const nos = parseBatchInput(val);
+      if (nos.length > 1) {
+        showBatchPanel(nos);
+        inputNo.value = '';
+        return;
+      }
+    }
+    // 有批量面板先隐藏
+    if (batchPanel.style.display === 'block') hideBatchPanel();
+    doSearch(val);
+  }
+});
+
+inputNo.addEventListener('paste', () => {
+  // 延迟执行让粘贴内容先写入输入框
+  setTimeout(() => {
+    const val = inputNo.value.trim();
+    if (/[,，;；、\n]/.test(val)) {
+      const nos = parseBatchInput(val);
+      if (nos.length > 1) {
+        showBatchPanel(nos);
+        inputNo.value = '';
+      }
+    }
+  }, 50);
+});
+
+btnBatchSearch.addEventListener('click', doBatchSearch);
+btnBatchCancel.addEventListener('click', () => {
+  if (batchRunning) return;
+  hideBatchPanel();
+});
+
 langToggle.addEventListener('click', toggleLang);
 
 // ---- 加载 ----
