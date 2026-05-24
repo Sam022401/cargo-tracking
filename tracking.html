@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>轨迹查询</title>
+<title>轨迹查询网站</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -20,7 +20,20 @@
     font-size: 22px; font-weight: 600; color: #1a2332;
     display: flex; align-items: center; gap: 8px;
   }
-  .header p { font-size: 14px; color: #6b7a90; margin-top: 4px; }
+  .header-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-row p { font-size: 14px; color: #6b7a90; }
+
+  /* 语言切换 */
+  .lang-btn {
+    padding: 4px 12px; font-size: 13px; font-weight: 500;
+    border: 1.5px solid #d0d8e4; border-radius: 8px;
+    background: #fff; cursor: pointer; color: #4a5a70;
+    transition: .15s; white-space: nowrap;
+  }
+  .lang-btn:hover { border-color: #4a7cf7; color: #4a7cf7; }
+  .lang-btn.active { background: #4a7cf7; color: #fff; border-color: #4a7cf7; }
 
   /* 搜索栏 */
   .search-box {
@@ -167,8 +180,11 @@
 <body>
 <div class="app">
   <div class="header">
-    <h1>📦 轨迹查询</h1>
-    <p>输入运单号查询货物轨迹</p>
+    <h1>📦 轨迹查询网站</h1>
+    <div class="header-row">
+      <p id="subtitle">输入运单号查询货物轨迹</p>
+      <button class="lang-btn" id="langToggle">EN</button>
+    </div>
   </div>
 
   <div class="search-box">
@@ -177,7 +193,7 @@
   </div>
 
   <div class="toolbar" id="toolbar" style="display:none;">
-    <span>共 <span class="count" id="totalCount">0</span> 票</span>
+    <span id="toolbarLabel">共 <span class="count" id="totalCount">0</span> 票</span>
     <div class="actions">
       <button id="btnRefreshAll">🔄 刷新全部</button>
     </div>
@@ -186,7 +202,7 @@
   <div id="list"></div>
   <div class="empty" id="empty">
     <div class="icon">🔍</div>
-    <p>暂无跟踪记录，输入运单号开始查询</p>
+    <p id="emptyText">暂无跟踪记录，输入运单号开始查询</p>
   </div>
 </div>
 
@@ -201,6 +217,35 @@ const toolbar = document.getElementById('toolbar');
 const totalCount = document.getElementById('totalCount');
 const btnRefreshAll = document.getElementById('btnRefreshAll');
 const toast = document.getElementById('toast');
+const langToggle = document.getElementById('langToggle');
+const subtitle = document.getElementById('subtitle');
+const emptyText = document.getElementById('emptyText');
+const toolbarLabel = document.getElementById('toolbarLabel');
+
+let currentLang = localStorage.getItem('tracking_lang') || 'zh';
+
+// ---- 国际化 ----
+function t(zh, en) {
+  return currentLang === 'en' ? en : zh;
+}
+
+function updateLangUI() {
+  langToggle.textContent = currentLang === 'zh' ? 'EN' : '中文';
+  langToggle.classList.toggle('active', currentLang === 'en');
+  subtitle.textContent = t('输入运单号查询货物轨迹', 'Track your cargo by waybill number');
+  inputNo.placeholder = t('输入运单号，回车查询', 'Enter waybill No. & press Enter');
+  btnSearch.textContent = t('查询', 'Track');
+  emptyText.textContent = t('暂无跟踪记录，输入运单号开始查询', 'No records yet. Enter a waybill to start.');
+  toolbarLabel.innerHTML = t('共 <span class="count" id="totalCount">0</span> 票', '<span class="count" id="totalCount">0</span> shipment(s)');
+  btnRefreshAll.textContent = t('🔄 刷新全部', '🔄 Refresh all');
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  localStorage.setItem('tracking_lang', currentLang);
+  updateLangUI();
+  render();
+}
 
 // ---- Toast ----
 let toastTimer;
@@ -248,18 +293,33 @@ function calcStatus(item) {
   const ev = getLatestEvent(item);
   if (!ev) return 'pending';
   const content = (ev.content || ev.content_loc || '');
+  const contentEn = (ev.content_en || '');
   // 已签收/已到港/已到目的地 → 已完成
   if (/已签收|已到港|已到目的地|已到仓库/.test(content)) return 'completed';
+  if (/delivered|signed for|arrived at (destination|warehouse)/i.test(contentEn)) return 'completed';
   // 预计/中转/安排/运输途中 → 快到港
   if (/预计|中转|安排|运输途中/.test(content)) return 'arriving';
+  if (/estimated|in transit|scheduled|on the way/i.test(contentEn)) return 'arriving';
   return 'completed';
 }
 
 function statusLabel(s) {
+  if (currentLang === 'en') {
+    if (s === 'arriving') return 'In Transit';
+    if (s === 'completed') return 'Completed';
+    if (s === 'fail') return 'Failed';
+    return 'Pending';
+  }
   if (s === 'arriving') return '快到港';
   if (s === 'completed') return '已完成';
   if (s === 'fail') return '查询失败';
   return '待更新';
+}
+
+function eventContent(ev) {
+  if (!ev) return '';
+  if (currentLang === 'en') return ev.content_en || ev.content_loc || ev.content || '';
+  return ev.content || ev.content_loc || '';
 }
 
 function formatTime(iso) {
@@ -302,30 +362,33 @@ function render() {
       const lastUpdate = formatTime(item.updatedAt);
       const events = (item.result && item.result.dataDict && item.result.dataDict.list) || [];
 
+      const briefText = latest ? eventContent(latest) : '';
+      const updateLabel = t('更新', 'Updated');
+
       html += `
         <div class="card" data-no="${no.replace(/"/g, '&quot;')}">
           <div class="card-header" onclick="toggleCard(this)">
             <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
               <span class="no">${escHtml(no)}</span>
               <span class="status-tag ${status}">${statusLabel(status)}</span>
-              ${latest ? `<span class="brief-status">${escHtml(latest.content || '')}</span>` : ''}
+              ${briefText ? `<span class="brief-status">${escHtml(briefText)}</span>` : ''}
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
-              <span class="meta">${lastUpdate ? '更新 ' + lastUpdate : ''}</span>
+              <span class="meta">${lastUpdate ? updateLabel + ' ' + lastUpdate : ''}</span>
               <span class="card-actions">
-                <button onclick="refreshOne('${escHtml(no)}', this)" title="刷新">🔄</button>
-                <button class="btn-del" onclick="deleteOne('${escHtml(no)}', this)" title="删除">✕</button>
+                <button onclick="refreshOne('${escHtml(no)}', this)" title="${t('刷新', 'Refresh')}">🔄</button>
+                <button class="btn-del" onclick="deleteOne('${escHtml(no)}', this)" title="${t('删除', 'Delete')}">✕</button>
               </span>
               <span class="arrow">▾</span>
             </div>
           </div>
           <div class="card-body">
-            ${events.length === 0 ? '<div class="no-events">暂无轨迹信息</div>' : ''}
+            ${events.length === 0 ? `<div class="no-events">${t('暂无轨迹信息', 'No tracking info yet')}</div>` : ''}
             <ul class="event-list">
               ${events.map(ev => `
                 <li class="event-item">
                   <div class="event-dot"></div>
-                  <div class="event-content">${escHtml(ev.content || '')}</div>
+                  <div class="event-content">${escHtml(eventContent(ev))}</div>
                   <div class="event-time">${formatEventTime(ev.created)}</div>
                 </li>
               `).join('')}
@@ -334,7 +397,7 @@ function render() {
         </div>`;
     }
     listEl.innerHTML = html;
-  }).catch(() => showToast('加载历史失败', true));
+  }).catch(() => showToast(t('加载历史失败', 'Failed to load history'), true));
 }
 
 function escHtml(s) {
@@ -352,20 +415,20 @@ function toggleCard(header) {
 // ---- 操作 ----
 async function doSearch(no) {
   no = no.trim();
-  if (!no) { showToast('请输入运单号', true); return; }
+  if (!no) { showToast(t('请输入运单号', 'Please enter a waybill number'), true); return; }
   btnSearch.disabled = true;
-  btnSearch.textContent = '查询中...';
+  btnSearch.textContent = t('查询中...', 'Tracking...');
   try {
     const result = await trackQuery(no);
     if (result.result === false) {
-      showToast(result.info || '查询失败', true);
+      showToast(result.info || t('查询失败', 'Query failed'), true);
     } else {
-      showToast('✅ 查询成功');
+      showToast(t('✅ 查询成功', '✅ Success'));
     }
     render();
-  } catch { showToast('网络错误', true); }
+  } catch { showToast(t('网络错误', 'Network error'), true); }
   btnSearch.disabled = false;
-  btnSearch.textContent = '查询';
+  btnSearch.textContent = t('查询', 'Track');
   inputNo.value = '';
   inputNo.focus();
 }
@@ -375,35 +438,37 @@ async function refreshOne(no, btn) {
   btn.textContent = '...';
   try {
     const result = await trackQuery(no);
-    if (result.result === false) showToast(result.info || '刷新失败', true);
-    else showToast('✅ 已刷新');
+    if (result.result === false) showToast(result.info || t('刷新失败', 'Refresh failed'), true);
+    else showToast(t('✅ 已刷新', '✅ Refreshed'));
     render();
-  } catch { showToast('刷新失败', true); render(); }
+  } catch { showToast(t('刷新失败', 'Refresh failed'), true); render(); }
 }
 
 async function deleteOne(no, btn) {
-  if (!confirm(`确定删除 ${no} 的跟踪记录？`)) return;
+  if (!confirm(t(`确定删除 ${no} 的跟踪记录？`, `Delete tracking record for ${no}?`))) return;
   await deleteHistory(no);
   render();
 }
 
 btnRefreshAll.addEventListener('click', async () => {
   btnRefreshAll.disabled = true;
-  btnRefreshAll.textContent = '刷新中...';
+  btnRefreshAll.textContent = t('刷新中...', 'Refreshing...');
   try {
     await refreshAll();
-    showToast('✅ 全部已刷新');
+    showToast(t('✅ 全部已刷新', '✅ All refreshed'));
     render();
-  } catch { showToast('部分刷新失败', true); render(); }
+  } catch { showToast(t('部分刷新失败', 'Some failed'), true); render(); }
   btnRefreshAll.disabled = false;
-  btnRefreshAll.textContent = '🔄 刷新全部';
+  btnRefreshAll.textContent = t('🔄 刷新全部', '🔄 Refresh all');
 });
 
 // ---- 事件绑定 ----
 btnSearch.addEventListener('click', () => doSearch(inputNo.value));
 inputNo.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(inputNo.value); });
+langToggle.addEventListener('click', toggleLang);
 
 // ---- 加载 ----
+updateLangUI();
 render();
 </script>
 </body>
