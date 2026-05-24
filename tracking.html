@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>货物跟踪看板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #f0f2f5;
+    color: #1a2332;
+    min-height: 100vh;
+  }
+  .app { max-width: 800px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  /* 顶部 */
+  .header { margin-bottom: 24px; }
+  .header h1 {
+    font-size: 22px; font-weight: 600; color: #1a2332;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .header p { font-size: 14px; color: #6b7a90; margin-top: 4px; }
+
+  /* 搜索栏 */
+  .search-box {
+    display: flex; gap: 8px; margin-bottom: 20px;
+  }
+  .search-box input {
+    flex: 1; padding: 11px 16px; font-size: 15px;
+    border: 1.5px solid #d0d8e4; border-radius: 10px;
+    outline: none; background: #fff; transition: .2s;
+  }
+  .search-box input:focus {
+    border-color: #4a7cf7;
+    box-shadow: 0 0 0 3px rgba(74,124,247,0.12);
+  }
+  .search-box button {
+    padding: 0 24px; font-size: 14px; font-weight: 500;
+    border: none; border-radius: 10px; cursor: pointer;
+    transition: .15s; white-space: nowrap;
+  }
+  .btn-search {
+    background: #4a7cf7; color: #fff;
+  }
+  .btn-search:hover { background: #3a6ae0; }
+  .btn-search:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* 工具栏 */
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; font-size: 13px; color: #6b7a90;
+  }
+  .toolbar .count { font-weight: 500; color: #1a2332; }
+  .toolbar .actions { display: flex; gap: 8px; }
+  .toolbar .actions button {
+    padding: 6px 14px; font-size: 12px; border: 1px solid #d0d8e4;
+    border-radius: 8px; background: #fff; cursor: pointer; transition: .15s;
+    color: #4a5a70;
+  }
+  .toolbar .actions button:hover { border-color: #4a7cf7; color: #4a7cf7; }
+  .toolbar .actions button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* 卡片 */
+  .card {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    margin-bottom: 12px; overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 18px; cursor: pointer; user-select: none;
+    border-bottom: 1px solid transparent;
+  }
+  .card-header .no {
+    font-size: 16px; font-weight: 600; color: #1a2332;
+    font-family: "SF Mono", "Menlo", monospace;
+  }
+  .card-header .status-tag {
+    font-size: 12px; padding: 3px 10px; border-radius: 20px;
+    font-weight: 500;
+  }
+  .status-tag.pending { background: #fff3e0; color: #e67e00; }
+  .status-tag.ok { background: #e8f5e9; color: #2e7d32; }
+  .status-tag.fail { background: #fce4ec; color: #c62828; }
+  .card-header .meta {
+    font-size: 12px; color: #9aabb8;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .card-header .arrow {
+    transition: transform .2s; font-size: 14px; color: #9aabb8;
+  }
+  .card-header .arrow.open { transform: rotate(180deg); }
+
+  /* 卡片操作按钮 */
+  .card-actions {
+    display: flex; gap: 4px; align-items: center;
+  }
+  .card-actions button {
+    padding: 4px 10px; font-size: 12px;
+    border: 1px solid #e0e6ee; border-radius: 6px;
+    background: #fff; cursor: pointer; color: #5a6a80; transition: .1s;
+  }
+  .card-actions button:hover { border-color: #4a7cf7; color: #4a7cf7; }
+  .card-actions .btn-del:hover { border-color: #e53935; color: #e53935; }
+  .card-actions button:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* 卡片正文 */
+  .card-body { padding: 0 18px 0; display: none; }
+  .card-body.open { display: block; padding: 0 18px 16px; }
+
+  .event-list { list-style: none; position: relative; }
+  .event-list::before {
+    content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px;
+    width: 2px; background: #e0e6ee;
+  }
+  .event-item {
+    display: flex; gap: 12px; padding: 6px 0;
+    position: relative; align-items: flex-start;
+  }
+  .event-dot {
+    width: 16px; height: 16px; flex-shrink: 0;
+    border-radius: 50%; background: #d0d8e4; margin-top: 3px;
+    position: relative; z-index: 1;
+  }
+  .event-item:first-child .event-dot {
+    background: #4a7cf7; box-shadow: 0 0 0 3px rgba(74,124,247,.2);
+  }
+  .event-item:first-child .event-content { font-weight: 500; }
+  .event-content { flex: 1; font-size: 14px; line-height: 1.6; color: #2a3a4a; }
+  .event-time { font-size: 12px; color: #9aabb8; white-space: nowrap; margin-top: 1px; }
+
+  .brief-status {
+    font-size: 13px; color: #5a6a80; flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    margin: 0 12px;
+  }
+  .no-events { color: #9aabb8; font-size: 14px; padding: 12px 0; text-align: center; }
+
+  /* empty */
+  .empty {
+    text-align: center; padding: 60px 20px; color: #9aabb8;
+  }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 14px; }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    background: #1a2332; color: #fff; padding: 10px 24px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: .3s; pointer-events: none;
+    white-space: nowrap; z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 600px) {
+    .app { padding: 16px 12px; }
+    .card-header { padding: 14px 14px; }
+    .card-header .meta { display: none; }
+    .brief-status { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>📦 货物跟踪看板</h1>
+    <p>输入运单号查询，已查过的单号自动保存，一目了然</p>
+  </div>
+
+  <div class="search-box">
+    <input id="inputNo" type="text" placeholder="输入运单号，回车查询" autofocus>
+    <button class="btn-search" id="btnSearch">查询</button>
+  </div>
+
+  <div class="toolbar" id="toolbar" style="display:none;">
+    <span>共 <span class="count" id="totalCount">0</span> 票</span>
+    <div class="actions">
+      <button id="btnRefreshAll">🔄 刷新全部</button>
+    </div>
+  </div>
+
+  <div id="list"></div>
+  <div class="empty" id="empty">
+    <div class="icon">🔍</div>
+    <p>暂无跟踪记录，输入运单号开始查询</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const inputNo = document.getElementById('inputNo');
+const btnSearch = document.getElementById('btnSearch');
+const listEl = document.getElementById('list');
+const emptyEl = document.getElementById('empty');
+const toolbar = document.getElementById('toolbar');
+const totalCount = document.getElementById('totalCount');
+const btnRefreshAll = document.getElementById('btnRefreshAll');
+const toast = document.getElementById('toast');
+
+// ---- Toast ----
+let toastTimer;
+function showToast(msg, isError) {
+  toast.textContent = msg;
+  toast.style.background = isError ? '#c62828' : '#1a2332';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ---- API 调用 ----
+async function trackQuery(no) {
+  const res = await fetch('/api/track', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `no=${encodeURIComponent(no)}`,
+  });
+  return res.json();
+}
+
+async function getHistory() {
+  const res = await fetch('/api/history');
+  return res.json();
+}
+
+async function deleteHistory(no) {
+  const res = await fetch(`/api/history/${encodeURIComponent(no)}`, { method: 'DELETE' });
+  return res.json();
+}
+
+async function refreshAll() {
+  const res = await fetch('/api/refresh-all', { method: 'POST' });
+  return res.json();
+}
+
+// ---- 状态与渲染 ----
+function getLatestEvent(item) {
+  if (!item || !item.dataDict || !item.dataDict.list || item.dataDict.list.length === 0) return null;
+  return item.dataDict.list[0];
+}
+
+function calcStatus(item) {
+  if (!item || item.result === false) return 'fail';
+  const ev = getLatestEvent(item);
+  if (!ev) return 'pending';
+  return 'ok';
+}
+
+function statusLabel(s) {
+  if (s === 'ok') return '运输中';
+  if (s === 'fail') return '查询失败';
+  return '待更新';
+}
+
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const pad = n => n.toString().padStart(2, '0');
+  return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatEventTime(t) {
+  if (!t) return '';
+  // 格式: /Date(1716518400000+0800)/ 或 ISO
+  if (typeof t === 'string' && t.startsWith('/Date(')) {
+    const ms = parseInt(t.match(/\d+/)[0]);
+    return formatTime(new Date(ms).toISOString());
+  }
+  return formatTime(t);
+}
+
+function render() {
+  getHistory().then(history => {
+    const entries = Object.entries(history);
+    if (entries.length === 0) {
+      emptyEl.style.display = 'block';
+      listEl.innerHTML = '';
+      toolbar.style.display = 'none';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    toolbar.style.display = 'flex';
+    totalCount.textContent = entries.length;
+
+    // 按 updatedAt 降序排列
+    entries.sort((a, b) => (b[1].updatedAt || '').localeCompare(a[1].updatedAt || ''));
+
+    let html = '';
+    for (const [no, item] of entries) {
+      const status = calcStatus(item.result);
+      const latest = getLatestEvent(item.result);
+      const lastUpdate = formatTime(item.updatedAt);
+      const events = (item.result && item.result.dataDict && item.result.dataDict.list) || [];
+
+      html += `
+        <div class="card" data-no="${no.replace(/"/g, '&quot;')}">
+          <div class="card-header" onclick="toggleCard(this)">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
+              <span class="no">${escHtml(no)}</span>
+              <span class="status-tag ${status}">${statusLabel(status)}</span>
+              ${latest ? `<span class="brief-status">${escHtml(latest.content || '')}</span>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span class="meta">${lastUpdate ? '更新 ' + lastUpdate : ''}</span>
+              <span class="card-actions">
+                <button onclick="refreshOne('${escHtml(no)}', this)" title="刷新">🔄</button>
+                <button class="btn-del" onclick="deleteOne('${escHtml(no)}', this)" title="删除">✕</button>
+              </span>
+              <span class="arrow">▾</span>
+            </div>
+          </div>
+          <div class="card-body">
+            ${events.length === 0 ? '<div class="no-events">暂无轨迹信息</div>' : ''}
+            <ul class="event-list">
+              ${events.map(ev => `
+                <li class="event-item">
+                  <div class="event-dot"></div>
+                  <div class="event-content">${escHtml(ev.content || '')}</div>
+                  <div class="event-time">${formatEventTime(ev.created)}</div>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        </div>`;
+    }
+    listEl.innerHTML = html;
+  }).catch(() => showToast('加载历史失败', true));
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function toggleCard(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('.arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ---- 操作 ----
+async function doSearch(no) {
+  no = no.trim();
+  if (!no) { showToast('请输入运单号', true); return; }
+  btnSearch.disabled = true;
+  btnSearch.textContent = '查询中...';
+  try {
+    const result = await trackQuery(no);
+    if (result.result === false) {
+      showToast(result.info || '查询失败', true);
+    } else {
+      showToast('✅ 查询成功');
+    }
+    render();
+  } catch { showToast('网络错误', true); }
+  btnSearch.disabled = false;
+  btnSearch.textContent = '查询';
+  inputNo.value = '';
+  inputNo.focus();
+}
+
+async function refreshOne(no, btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const result = await trackQuery(no);
+    if (result.result === false) showToast(result.info || '刷新失败', true);
+    else showToast('✅ 已刷新');
+    render();
+  } catch { showToast('刷新失败', true); render(); }
+}
+
+async function deleteOne(no, btn) {
+  if (!confirm(`确定删除 ${no} 的跟踪记录？`)) return;
+  await deleteHistory(no);
+  render();
+}
+
+btnRefreshAll.addEventListener('click', async () => {
+  btnRefreshAll.disabled = true;
+  btnRefreshAll.textContent = '刷新中...';
+  try {
+    await refreshAll();
+    showToast('✅ 全部已刷新');
+    render();
+  } catch { showToast('部分刷新失败', true); render(); }
+  btnRefreshAll.disabled = false;
+  btnRefreshAll.textContent = '🔄 刷新全部';
+});
+
+// ---- 事件绑定 ----
+btnSearch.addEventListener('click', () => doSearch(inputNo.value));
+inputNo.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(inputNo.value); });
+
+// ---- 加载 ----
+render();
+</script>
+</body>
+</html>

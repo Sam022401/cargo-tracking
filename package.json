@@ -1,0 +1,9 @@
+{
+  "name": "cargo-tracking-dashboard",
+  "version": "1.0.0",
+  "description": "货物跟踪看板 - 多单号跟踪查询工具",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
