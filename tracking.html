@@ -3,27 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>轨迹查询网站</title>
+<title>SAM工作台</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
-    background: #f0f2f5;
-    color: #1a2332;
+    background: #f5f6f8;
+    color: #1e293b;
     min-height: 100vh;
   }
-  .app { max-width: 800px; margin: 0 auto; padding: 24px 16px 60px; }
+  .app { max-width: 100%; margin: 0 auto; padding: 16px 20px 40px; }
 
   /* 顶部 */
-  .header { margin-bottom: 24px; }
+  .header { margin-bottom: 16px; }
   .header h1 {
-    font-size: 22px; font-weight: 600; color: #1a2332;
-    display: flex; align-items: center; gap: 8px;
+    font-size: 20px; font-weight: 700; color: #1e293b;
+    display: flex; align-items: center; gap: 8px; letter-spacing: -0.3px;
   }
   .header-row {
     display: flex; align-items: center; justify-content: space-between;
   }
-  .header-row p { font-size: 14px; color: #6b7a90; }
+  .header-row p { font-size: 13px; color: #8896a6; }
 
   /* 语言切换 */
   .lang-btn {
@@ -40,32 +40,33 @@
     display: flex; gap: 8px; margin-bottom: 12px;
   }
   .search-box input {
-    flex: 1; padding: 11px 16px; font-size: 15px;
-    border: 1.5px solid #d0d8e4; border-radius: 10px;
+    flex: 1; padding: 10px 16px; font-size: 14px;
+    border: 1px solid #dde1e7; border-radius: 10px;
     outline: none; background: #fff; transition: .2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
   }
   .search-box input:focus {
     border-color: #4a7cf7;
-    box-shadow: 0 0 0 3px rgba(74,124,247,0.12);
+    box-shadow: 0 0 0 3px rgba(74,124,247,0.08);
   }
   .search-box button {
-    padding: 0 24px; font-size: 14px; font-weight: 500;
+    padding: 0 20px; font-size: 13px; font-weight: 600;
     border: none; border-radius: 10px; cursor: pointer;
     transition: .15s; white-space: nowrap;
   }
   .btn-search {
-    background: #4a7cf7; color: #fff;
+    background: #1e293b; color: #fff;
   }
-  .btn-search:hover { background: #3a6ae0; }
-  .btn-search:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-search:hover { background: #334155; }
+  .btn-search:disabled { opacity: .4; cursor: not-allowed; }
   .btn-batch-mode {
     padding: 0 14px; font-size: 13px; font-weight: 500;
-    border: 1.5px solid #d0d8e4; border-radius: 10px;
+    border: 1px solid #dde1e7; border-radius: 10px;
     background: #fff; cursor: pointer; transition: .15s; white-space: nowrap;
-    color: #4a5a70;
+    color: #64748b; box-shadow: 0 1px 2px rgba(0,0,0,.03);
   }
-  .btn-batch-mode:hover { border-color: #4a7cf7; color: #4a7cf7; }
-  .btn-batch-mode.active { background: #4a7cf7; color: #fff; border-color: #4a7cf7; }
+  .btn-batch-mode:hover { border-color: #1e293b; color: #1e293b; }
+  .btn-batch-mode.active { background: #1e293b; color: #fff; border-color: #1e293b; }
 
   /* 批量查询面板 */
   .batch-panel {
@@ -116,53 +117,401 @@
   .batch-progress-text .count-fail { color: #e53935; }
   .batch-progress-text .count-total { color: #1a2332; font-weight: 600; }
 
-  /* 工具栏 */
-  .toolbar {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 16px; font-size: 13px; color: #6b7a90;
-  }
-  .toolbar .count { font-weight: 500; color: #1a2332; }
-  .toolbar .actions { display: flex; gap: 8px; }
-  .toolbar .actions button {
-    padding: 6px 14px; font-size: 12px; border: 1px solid #d0d8e4;
-    border-radius: 8px; background: #fff; cursor: pointer; transition: .15s;
-    color: #4a5a70;
-  }
-  .toolbar .actions button:hover { border-color: #4a7cf7; color: #4a7cf7; }
-  .toolbar .actions button:disabled { opacity: .4; cursor: not-allowed; }
+  /* ====== 主布局：侧边栏 + 内容 ====== */
+  .main-area { display: flex; gap: 0; align-items: stretch; }
 
-  /* 卡片 */
-  .card {
-    background: #fff; border-radius: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    margin-bottom: 12px; overflow: hidden;
-    transition: box-shadow .2s;
+  /* 拖拽分隔条 */
+  .resizer {
+    width: 8px; cursor: col-resize; flex-shrink: 0;
+    background: #e8ecf2; position: relative; z-index: 10;
+    border-radius: 4px; margin: 0 2px;
+    align-self: stretch; min-height: 400px;
   }
-  .card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .resizer:hover, .resizer.active { background: #4a7cf7; box-shadow: 0 0 4px rgba(74,124,247,.3); }
+
+  /* ====== 侧边栏 ====== */
+  .sidebar {
+    width: 250px; flex-shrink: 0; position: sticky; top: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .sidebar-section {
+    background: #fff; border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    overflow: hidden; border: 1px solid #eef1f5;
+  }
+  .sidebar-section-title {
+    font-size: 12px; font-weight: 700; color: #475569;
+    padding: 9px 14px; border-bottom: 1px solid #f1f3f6;
+    background: #fafbfc; user-select: none;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sidebar-section-title .title-text { cursor: pointer; }
+  .sidebar-section-title .title-text:hover { color: #4a7cf7; text-decoration: underline dashed; }
+  .sidebar-section-title .title-edit-input {
+    font-size: 13px; font-weight: 600; padding: 2px 6px;
+    border: 1.5px solid #4a7cf7; border-radius: 6px;
+    outline: none; width: 120px; background: #fff; color: #1a2332;
+  }
+
+  /* 拖拽排序 */
+  .drag-handle { cursor: grab; color: #c8d0d8; font-size: 14px; padding: 2px 4px; }
+  .drag-handle:hover { color: #6b7a90; }
+  .drag-handle:active { cursor: grabbing; }
+  .sort-btn { padding: 2px 4px; font-size: 11px; border: none; background: transparent; cursor: pointer; color: #c8d0d8; }
+  .sort-btn:hover { color: #6b7a90; }
+  .sidebar-section-title .collapse-icon {
+    font-size: 10px; transition: .2s; margin-left: auto;
+  }
+  .sidebar-section-title .collapse-icon.open { transform: rotate(180deg); }
+  .sidebar-section-body { padding: 10px 14px; }
+  .sidebar-section-body.hidden { display: none; }
+
+  /* 备忘录 */
+  .memo-list { list-style: none; }
+  .memo-row {
+    display: flex; align-items: flex-start; gap: 6px;
+    margin-bottom: 4px;
+  }
+  .memo-num {
+    font-size: 12px; color: #9aabb8; font-weight: 500; width: 18px;
+    text-align: right; padding-top: 7px; flex-shrink: 0;
+  }
+  .memo-input {
+    flex: 1; padding: 6px 8px; font-size: 13px; line-height: 1.5;
+    border: 1px solid transparent; border-radius: 6px;
+    outline: none; background: transparent; color: #2a3a4a;
+    transition: .15s; font-family: inherit;
+  }
+  .memo-input:hover { background: #f5f6f8; }
+  .memo-input:focus { background: #fff; border-color: #4a7cf7; }
+  .memo-input::placeholder { color: #c8d0d8; }
+  .memo-del {
+    padding: 4px 6px; font-size: 11px; border: none; background: transparent;
+    cursor: pointer; color: #d0c8c8; flex-shrink: 0; margin-top: 3px;
+    visibility: hidden; border-radius: 4px;
+  }
+  .memo-row:hover .memo-del { visibility: visible; }
+  .memo-del:hover { color: #e53935; background: #fce4ec; }
+  .memo-saved { font-size: 10px; color: #9aabb8; text-align: right; margin-top: 4px; }
+
+  /* 模板 */
+  .template-item {
+    display: block; width: 100%; text-align: left;
+    padding: 7px 10px; font-size: 12px;
+    border: 1px solid #e8ecf2; border-radius: 7px;
+    background: #fafbfc; cursor: pointer; margin-bottom: 5px;
+    transition: .15s; color: #4a5a70; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .template-item:hover { border-color: #4a7cf7; color: #4a7cf7; background: #f5f7ff; }
+  .template-item:last-child { margin-bottom: 0; }
+  .template-item.copied { border-color: #43a047; color: #2e7d32; background: #e8f5e9; }
+  .tpl-label {
+    font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+    background: #e8ecf2; color: #5a6a80; white-space: nowrap; flex-shrink: 0;
+    cursor: pointer; min-width: 28px; text-align: center;
+  }
+  .tpl-label:hover { background: #d0d8e4; }
+
+  /* 快捷链接 */
+  .link-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; font-size: 12px; border-radius: 7px;
+    color: #4a5a70; text-decoration: none; transition: .15s;
+    border: 1px solid transparent; cursor: pointer;
+  }
+  .link-item:hover { background: #f5f7ff; border-color: #d0d8e4; color: #4a7cf7; }
+  .link-item .link-icon { font-size: 14px; flex-shrink: 0; }
+
+  /* 偏远查询 */
+  .remote-form { display: flex; flex-direction: column; gap: 6px; }
+  .remote-form select, .remote-form input {
+    width: 100%; padding: 6px 8px; font-size: 12px;
+    border: 1px solid #d0d8e4; border-radius: 7px;
+    outline: none; background: #fff; color: #2a3a4a;
+  }
+  .remote-form select:focus, .remote-form input:focus { border-color: #4a7cf7; }
+  .remote-btn {
+    width: 100%; padding: 7px; font-size: 13px; font-weight: 500;
+    border: none; border-radius: 8px; cursor: pointer;
+    background: #4a7cf7; color: #fff; transition: .15s;
+  }
+  .remote-btn:hover { background: #3a6ae0; }
+  .remote-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .remote-result {
+    margin-top: 6px; padding: 8px 10px; border-radius: 8px;
+    font-size: 13px; font-weight: 600; text-align: center;
+  }
+  .remote-result.far { background: #fce4ec; color: #c62828; }
+  .remote-result.not-far { background: #e8f5e9; color: #2e7d32; }
+  .remote-result.error { background: #fff3e0; color: #e65100; }
+
+  /* ====== 顶部控制栏 ====== */
+  .control-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .stats-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .stat-pill {
+    font-size: 12px; font-weight: 600; padding: 3px 10px;
+    border-radius: 12px; white-space: nowrap;
+    cursor: pointer; transition: .15s; border: 1px solid transparent;
+    user-select: none;
+  }
+  .stat-pill:hover { opacity: .85; }
+  .stat-pill.active { border-color: #1e293b; box-shadow: 0 0 0 1px rgba(0,0,0,.05); }
+  .stat-pill.arriving { background: #fef9e7; color: #b7950b; }
+  .stat-pill.in_transit { background: #e8f0fe; color: #1a56c4; }
+  .stat-pill.pending { background: #f3eef9; color: #6b3fa0; }
+  .stat-pill.completed { background: #eaf5ea; color: #1e7d2e; }
+  .stat-pill.fail { background: #fdecec; color: #b91c1c; }
+  .stat-pill.all { background: #f1f2f5; color: #475569; }
+
+  .filter-group {
+    display: flex; align-items: center; gap: 6px; margin-left: auto;
+  }
+  .filter-input {
+    padding: 6px 12px; font-size: 13px;
+    border: 1.5px solid #d0d8e4; border-radius: 8px;
+    outline: none; width: 130px; transition: .2s; background: #fff;
+  }
+  .filter-input:focus { border-color: #4a7cf7; }
+  .filter-input::placeholder { color: #b0bcc8; }
+
+  .btn-export {
+    padding: 6px 14px; font-size: 12px; font-weight: 500;
+    border: 1px solid #d0d8e4; border-radius: 8px;
+    background: #fff; cursor: pointer; transition: .15s;
+    color: #4a5a70; white-space: nowrap;
+  }
+  .btn-export:hover { border-color: #4a7cf7; color: #4a7cf7; }
+
+  .pin-badge {
+    font-size: 12px; color: #f57f17; background: #fff8e1;
+    padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+  }
+
+  /* ====== 左右分栏 ====== */
+  .split-layout {
+    display: flex; gap: 0; align-items: stretch;
+  }
+  .split-layout .panel { flex: 1; min-width: 200px; }
+
+  .panel {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.03);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    border: 1px solid #eef1f5;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f3f6;
+    background: #fafbfc;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    flex-shrink: 0;
+  }
+  .panel-header .panel-count {
+    font-size: 12px;
+    font-weight: 500;
+    background: #e8ecf2;
+    color: #5a6a80;
+    padding: 2px 10px;
+    border-radius: 12px;
+    min-width: 24px;
+    text-align: center;
+  }
+  .panel-header .panel-actions {
+    margin-left: auto;
+    display: flex; gap: 6px;
+  }
+  .panel-header .panel-actions button {
+    padding: 5px 12px; font-size: 12px;
+    border: 1px solid #d0d8e4; border-radius: 7px;
+    background: #fff; cursor: pointer; transition: .15s;
+    color: #4a5a70; white-space: nowrap;
+  }
+  .panel-header .panel-actions button:hover {
+    border-color: #4a7cf7; color: #4a7cf7;
+  }
+  .panel-header .panel-actions button:disabled {
+    opacity: .4; cursor: not-allowed;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px);
+    padding: 6px 8px 10px;
+  }
+
+  .panel-empty {
+    text-align: center;
+    padding: 50px 20px;
+    color: #9aabb8;
+    font-size: 14px;
+  }
+
+  /* ====== 卡片 ====== */
+  .card {
+    background: #fff;
+    border: 1px solid #eef1f5;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .card:hover { border-color: #dce0e8; box-shadow: 0 1px 6px rgba(0,0,0,.04); }
+
+  /* 快到港 0-1天高亮 — 红色预警 */
+  .card.urgent {
+    border-left: 4px solid #e53935;
+    background: #fff5f5;
+  }
+  .card.urgent:hover { border-color: #ef9a9a; }
+
+  /* 快到港 2-3天高亮 — 橙色提醒 */
+  .card.warning {
+    border-left: 4px solid #f57c00;
+    background: #fffdf7;
+  }
+  .card.warning:hover { border-color: #ffcc02; }
+
+  /* 搜索高亮闪烁 */
+  .card.highlight-flash {
+    animation: highlightPulse 0.6s ease-in-out 3;
+    border-color: #4a7cf7 !important;
+    box-shadow: 0 0 0 3px rgba(74,124,247,0.2) !important;
+  }
+  @keyframes highlightPulse {
+    0%, 100% { background: #fff; }
+    50% { background: #e8f0ff; }
+  }
+
   .card-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 18px; cursor: pointer;
-    border-bottom: 1px solid transparent;
+    display: flex; flex-direction: column; gap: 6px;
+    padding: 12px 14px; cursor: pointer;
+  }
+  .card-header-row {
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: nowrap; overflow: hidden;
+  }
+  .card-header-row.main { }
+  .card-header-row.sub {
+    font-size: 12px; color: #6b7a90; gap: 10px;
   }
   .card-header .no {
-    font-size: 16px; font-weight: 600; color: #1a2332;
-    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 13px; font-weight: 700; color: #1e293b;
+    font-family: "SF Mono", "Menlo", "Cascadia Code", monospace;
+    white-space: nowrap; flex-shrink: 0;
   }
   .card-header .status-tag {
-    font-size: 12px; padding: 3px 10px; border-radius: 20px;
-    font-weight: 500;
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    letter-spacing: 0.2px;
   }
-  .status-tag.arriving { background: #fff8e1; color: #f57f17; }
-  .status-tag.in_transit { background: #e3f2fd; color: #1565c0; }
-  .status-tag.completed { background: #e8f5e9; color: #2e7d32; }
-  .status-tag.fail { background: #fce4ec; color: #c62828; }
-  .status-tag.pending { background: #f3e5f5; color: #7b1fa2; }
+  .status-tag.arriving { background: #fef9e7; color: #b7950b; }
+  .status-tag.in_transit { background: #e8f0fe; color: #1a56c4; }
+  .status-tag.completed { background: #eaf5ea; color: #1e7d2e; }
+  .status-tag.fail { background: #fdecec; color: #b91c1c; }
+  .status-tag.pending { background: #f3eef9; color: #6b3fa0; }
+
   .card-header .meta {
-    font-size: 12px; color: #9aabb8;
-    display: flex; align-items: center; gap: 12px;
+    font-size: 11px; color: #9aabb8;
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0; white-space: nowrap;
   }
+  .card-header .days-left {
+    font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 12px;
+    white-space: nowrap;
+  }
+  .days-left.urgent { background: #ffebee; color: #c62828; }
+  .days-left.warning { background: #fff3e0; color: #e65100; }
+
+  /* 客户备注 */
+  .card-note {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; color: #6b7a90; background: #f5f6f8;
+    padding: 2px 8px; border-radius: 6px;
+    max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-note:hover { border-color: #4a7cf7; background: #eef2ff; }
+  .card-note.empty { color: #b0bcc8; font-style: italic; }
+  .card-note-input {
+    font-size: 12px; padding: 2px 6px; border: 1.5px solid #4a7cf7;
+    border-radius: 6px; outline: none; width: 90px;
+    background: #fff; color: #1a2332;
+    box-shadow: 0 0 0 2px rgba(74,124,247,0.15);
+  }
+
+  /* 业务员标签 */
+  .card-sp {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; color: #5a7a60; background: #eef7ef;
+    padding: 2px 8px; border-radius: 6px;
+    max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-sp:hover { border-color: #43a047; background: #e0f2e1; }
+  .card-sp.empty { color: #a0b8a4; font-style: italic; }
+
+  /* 配合商标签 */
+  .card-supplier {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; color: #a0522d; background: #fef5ee;
+    padding: 2px 8px; border-radius: 6px;
+    max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-supplier:hover { border-color: #e67e22; background: #fdf0e0; }
+  .card-supplier.empty { color: #c0a890; font-style: italic; }
+
+  /* 上家单号 */
+  .card-supplier-no {
+    font-size: 11px; font-family: "SF Mono", "Menlo", monospace;
+    color: #8b7355; background: transparent;
+    padding: 1px 6px; border-radius: 4px;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-supplier-no:hover { border-color: #a09080; background: #fdfaf5; }
+  .card-supplier-no.empty { color: #c8c0b8; font-style: italic; }
+
+  /* 仓库标签 */
+  .card-warehouse {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; color: #6a5acd; background: #f5f0ff;
+    padding: 2px 8px; border-radius: 6px;
+    max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-warehouse:hover { border-color: #7c6aef; background: #ede4ff; }
+  .card-warehouse.empty { color: #b0a8d0; font-style: italic; }
+
   .card-header .arrow {
-    transition: transform .2s; font-size: 14px; color: #9aabb8;
+    transition: transform .2s; font-size: 12px; color: #9aabb8;
+    flex-shrink: 0;
   }
   .card-header .arrow.open { transform: rotate(180deg); }
 
@@ -171,17 +520,38 @@
     display: flex; gap: 4px; align-items: center;
   }
   .card-actions button {
-    padding: 4px 10px; font-size: 12px;
+    padding: 3px 8px; font-size: 11px;
     border: 1px solid #e0e6ee; border-radius: 6px;
     background: #fff; cursor: pointer; color: #5a6a80; transition: .1s;
   }
   .card-actions button:hover { border-color: #4a7cf7; color: #4a7cf7; }
   .card-actions .btn-del:hover { border-color: #e53935; color: #e53935; }
+  .card-actions .btn-pin { color: #ccc; font-size: 13px; }
+  .card-actions .btn-pin:hover { border-color: #f57c00; color: #f57c00; }
+  .card-actions .btn-pin.pinned { color: #f57c00; border-color: #ffcc80; }
   .card-actions button:disabled { opacity: .4; cursor: not-allowed; }
 
+  /* 置顶卡片 */
+  .card.pinned { border-left: 3px solid #f57c00; }
+
+  /* 时效标签 */
+  .transit-tag {
+    font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 8px;
+    white-space: nowrap; display: inline-flex; align-items: center; gap: 3px;
+  }
+  .transit-tag.done { background: #eaf5ea; color: #1e7d2e; }
+  .transit-tag.active { background: #e8f0fe; color: #1a56c4; }
+  .transit-range { font-size: 10px; opacity: .65; font-weight: 400; }
+
   /* 卡片正文 */
-  .card-body { padding: 0 18px 0; display: none; }
-  .card-body.open { display: block; padding: 0 18px 16px; }
+  .card-body { padding: 0 14px 0; display: none; }
+  .card-body.open { display: block; padding: 0 14px 14px; }
+
+  .brief-status {
+    font-size: 12px; color: #5a6a80;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 320px; flex-shrink: 1;
+  }
 
   .event-list { list-style: none; position: relative; }
   .event-list::before {
@@ -189,34 +559,22 @@
     width: 2px; background: #e0e6ee;
   }
   .event-item {
-    display: flex; gap: 12px; padding: 6px 0;
+    display: flex; gap: 10px; padding: 5px 0;
     position: relative; align-items: flex-start;
   }
   .event-dot {
-    width: 16px; height: 16px; flex-shrink: 0;
-    border-radius: 50%; background: #d0d8e4; margin-top: 3px;
+    width: 14px; height: 14px; flex-shrink: 0;
+    border-radius: 50%; background: #d0d8e4; margin-top: 2px;
     position: relative; z-index: 1;
   }
   .event-item:first-child .event-dot {
     background: #4a7cf7; box-shadow: 0 0 0 3px rgba(74,124,247,.2);
   }
   .event-item:first-child .event-content { font-weight: 500; }
-  .event-content { flex: 1; font-size: 14px; line-height: 1.6; color: #2a3a4a; }
-  .event-time { font-size: 12px; color: #9aabb8; white-space: nowrap; margin-top: 1px; }
+  .event-content { flex: 1; font-size: 13px; line-height: 1.5; color: #2a3a4a; }
+  .event-time { font-size: 11px; color: #9aabb8; white-space: nowrap; margin-top: 1px; }
 
-  .brief-status {
-    font-size: 13px; color: #5a6a80; flex: 1;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    margin: 0 12px;
-  }
-  .no-events { color: #9aabb8; font-size: 14px; padding: 12px 0; text-align: center; }
-
-  /* empty */
-  .empty {
-    text-align: center; padding: 60px 20px; color: #9aabb8;
-  }
-  .empty .icon { font-size: 48px; margin-bottom: 12px; }
-  .empty p { font-size: 14px; }
+  .no-events { color: #9aabb8; font-size: 13px; padding: 10px 0; text-align: center; }
 
   /* toast */
   .toast {
@@ -227,20 +585,59 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* 响应式：窄屏隐藏侧边栏 */
+  @media (max-width: 1100px) {
+    .sidebar { display: none; }
+  }
+
+  /* 平板 */
+  @media (max-width: 900px) {
+    .app { padding: 12px 12px 40px; }
+    .split-layout { flex-direction: column; }
+    .split-layout .panel { min-width: 0 !important; }
+    .panel-body { max-height: none; }
+    .split-layout .resizer { display: none; }
+    #resizerSidebar { display: none; }
+    .card-header { padding: 10px 12px; }
+    .card-header-row.sub { flex-wrap: wrap; }
+    .brief-status { max-width: 180px; font-size: 11px; }
+    .card-header .no { font-size: 13px; }
+    .control-bar { flex-wrap: wrap; gap: 8px; }
+  }
+
+  /* 手机 */
   @media (max-width: 600px) {
-    .app { padding: 16px 12px; }
-    .card-header { padding: 14px 14px; }
-    .card-header .meta { display: none; }
-    .brief-status { display: none; }
+    .app { padding: 8px 8px 30px; }
+    .header h1 { font-size: 17px; }
+    .header-row p { font-size: 11px; display: none; }
+    .search-box input { font-size: 13px; padding: 9px 12px; }
+    .search-box button { padding: 0 14px; font-size: 12px; }
+    .btn-batch-mode { font-size: 12px; padding: 0 10px; }
+    .card-header { padding: 8px 10px; }
+    .card-header .no { font-size: 12px; }
+    .card-header-row.main { gap: 4px; flex-wrap: wrap; }
+    .card-header-row.sub { font-size: 11px; gap: 4px; }
+    .card-note, .card-sp, .card-supplier, .card-warehouse { font-size: 10px; padding: 1px 6px; max-width: 60px; }
+    .status-tag { font-size: 9px; padding: 1px 6px; }
+    .panel-header { font-size: 12px; padding: 8px 10px; }
+    .panel-body { padding: 4px 6px 6px; }
+    .card { margin-bottom: 4px; }
+    .brief-status { max-width: 100px; font-size: 10px; }
+    .stat-pill { font-size: 10px; padding: 2px 7px; }
+    .btn-export, .btn-backup { font-size: 10px; padding: 4px 8px; }
+    .days-left { font-size: 10px !important; }
+    .transit-tag { font-size: 10px; }
+    #todayExpandStub { font-size: 10px; }
   }
 </style>
+<script src="/shared/status-calculator.js"></script>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <h1>📦 轨迹查询网站</h1>
+    <h1>📦 SAM工作台</h1>
     <div class="header-row">
-      <p id="subtitle">输入运单号查询货物轨迹</p>
+      <p id="subtitle">货代全流程管理 · 轨迹跟踪 · 仓库速查 · 偏远查询</p>
       <button class="lang-btn" id="langToggle">EN</button>
     </div>
   </div>
@@ -261,11 +658,8 @@
         <button class="btn-search" id="btnBatchSearch" style="padding:6px 16px;font-size:13px;" disabled>批量查询</button>
       </div>
     </div>
-    <!-- 进度条 -->
     <div class="batch-progress" id="batchProgress">
-      <div class="batch-progress-bar">
-        <div class="fill" id="batchProgressFill"></div>
-      </div>
+      <div class="batch-progress-bar"><div class="fill" id="batchProgressFill"></div></div>
       <div class="batch-progress-text" id="batchProgressText">
         查询中 <span class="count-done" id="batchDone">0</span>
         / <span class="count-total" id="batchTotal">0</span>
@@ -274,18 +668,386 @@
     </div>
   </div>
 
-  <div class="toolbar" id="toolbar" style="display:none;">
-    <span id="toolbarLabel">共 <span class="count" id="totalCount">0</span> 票</span>
-    <div class="actions">
-      <button id="btnRefreshAll">🔄 刷新全部</button>
+  <!-- ====== 主布局：侧边栏 + 内容 ====== -->
+  <div class="main-area">
+    <!-- 侧边栏 -->
+    <div class="sidebar" id="sidebar">
+      <!-- 备忘录 -->
+      <div class="sidebar-section" id="memoSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="memoSection" ondblclick="editSectionTitle(this)" title="双击改名">📝 备忘录</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="memoBody">
+          <ul class="memo-list" id="memoList"></ul>
+          <div class="memo-saved" id="memoSaved">已自动保存</div>
+        </div>
+      </div>
+
+      <!-- 消息模板 -->
+      <div class="sidebar-section" id="tplSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="tplSection" ondblclick="editSectionTitle(this)" title="双击改名">📋 快速消息</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="tplBody">
+          <div id="templateList"></div>
+          <button class="template-item" style="border-style:dashed;color:#b0bcc8;" onclick="addTemplate()">+ 添加消息</button>
+        </div>
+      </div>
+
+      <!-- 常用名单管理 -->
+      <div class="sidebar-section" id="rosterSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="rosterSection" ondblclick="editSectionTitle(this)" title="双击改名">👥 常用名单</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="rosterBody">
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#5a6a80;margin-bottom:4px;">🟦 客户</div>
+            <div id="rosterNote"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('note')">+ 添加客户</button>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#5a7a80;margin-bottom:4px;">🟩 业务员</div>
+            <div id="rosterSalesperson"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('salesperson')">+ 添加业务员</button>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#5a7a80;margin-bottom:4px;">🟠 配合商</div>
+            <div id="rosterSupplier"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('supplier')">+ 添加配合商</button>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#6a5acd;margin-bottom:4px;">🟣 仓库</div>
+            <div id="rosterWarehouse"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('warehouse')">+ 添加仓库</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 仓库速查 -->
+      <div class="sidebar-section" id="whSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="whSection" ondblclick="editSectionTitle(this)" title="双击改名">🏭 仓库速查</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="whBody">
+          <input type="text" class="filter-input" id="whSearch" placeholder="输入配合商名筛选..." style="width:100%;margin-bottom:8px;" oninput="renderWarehouses()">
+          <div id="whList"></div>
+          <button class="template-item" style="border-style:dashed;color:#b0bcc8;" onclick="addWarehouse()">+ 添加仓库</button>
+        </div>
+      </div>
+
+      <!-- 偏远查询 -->
+      <div class="sidebar-section" id="remoteSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="remoteSection" ondblclick="editSectionTitle(this)" title="双击改名">🏔️ 偏远查询</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="remoteBody">
+          <div class="remote-form">
+            <select id="remoteCarrier">
+              <option value="all">全部 (DHL/UPS/FedEx/TNT)</option>
+              <option value="DHL">DHL</option>
+              <option value="UPS">UPS</option>
+              <option value="fedex">FedEx</option>
+              <option value="TNT">TNT</option>
+            </select>
+                                                <select id="remoteCountry">
+                <option value="">选择国家</option>
+                <optgroup label="常用">
+                  <option value="US|US - 美国(United States)">US - 美国(United States)</option>
+                  <option value="GB|GB - 英国(United Kingdom)">GB - 英国(United Kingdom)</option>
+                  <option value="DE|DE - 德国(Germany)">DE - 德国(Germany)</option>
+                  <option value="FR|FR - 法国(France)">FR - 法国(France)</option>
+                  <option value="IT|IT - 意大利(Italy)">IT - 意大利(Italy)</option>
+                  <option value="ES|ES - 西班牙(Spain)">ES - 西班牙(Spain)</option>
+                  <option value="NL|NL - 荷兰(Netherlands)">NL - 荷兰(Netherlands)</option>
+                  <option value="BE|BE - 比利时(Belgium)">BE - 比利时(Belgium)</option>
+                  <option value="AU|AU - 澳大利亚(Australia)">AU - 澳大利亚(Australia)</option>
+                  <option value="CA|CA - 加拿大(Canada)">CA - 加拿大(Canada)</option>
+                  <option value="JP|JP - 日本(Japan)">JP - 日本(Japan)</option>
+                  <option value="KR|KR - 韩国(South Korea)">KR - 韩国(South Korea)</option>
+                  <option value="SG|SG - 新加坡(Singapore)">SG - 新加坡(Singapore)</option>
+                  <option value="AE|AE - 阿拉伯联合酋长国(United Arab Emirates)">AE - 阿拉伯联合酋长国(United Arab Emirates)</option>
+                  <option value="SA|SA - 沙特阿拉伯(Saudi Arabia)">SA - 沙特阿拉伯(Saudi Arabia)</option>
+                  <option value="BR|BR - 巴西(Brazil)">BR - 巴西(Brazil)</option>
+                  <option value="MX|MX - 墨西哥(Mexico)">MX - 墨西哥(Mexico)</option>
+                  <option value="IN|IN - 印度(India)">IN - 印度(India)</option>
+                  <option value="VN|VN - 越南(Viet Nam)">VN - 越南(Viet Nam)</option>
+                  <option value="TH|TH - 泰国(Thailand)">TH - 泰国(Thailand)</option>
+                  <option value="ZA|ZA - 南非(South Africa)">ZA - 南非(South Africa)</option>
+                  <option value="HK|HK - 中国香港(Hong Kong)">HK - 中国香港(Hong Kong)</option>
+                </optgroup>
+                <optgroup label="全部">
+                  <option value="AF|AF - 阿富汗(Afghanistan)">AF - 阿富汗(Afghanistan)</option>
+                  <option value="AL|AL - 阿尔巴尼亚(Albania)">AL - 阿尔巴尼亚(Albania)</option>
+                  <option value="DZ|DZ - 阿尔及利亚(Algeria)">DZ - 阿尔及利亚(Algeria)</option>
+                  <option value="AD|AD - 安道尔(Andorra)">AD - 安道尔(Andorra)</option>
+                  <option value="AO|AO - 安哥拉(Angola)">AO - 安哥拉(Angola)</option>
+                  <option value="AG|AG - 安提瓜(Antigua)">AG - 安提瓜(Antigua)</option>
+                  <option value="AR|AR - 阿根廷(Argentina)">AR - 阿根廷(Argentina)</option>
+                  <option value="AM|AM - 亚美尼亚(Armenia)">AM - 亚美尼亚(Armenia)</option>
+                  <option value="AT|AT - 奥地利(Austria)">AT - 奥地利(Austria)</option>
+                  <option value="AZ|AZ - 阿塞拜疆(Azerbaijan)">AZ - 阿塞拜疆(Azerbaijan)</option>
+                  <option value="BS|BS - 巴哈马(Bahamas)">BS - 巴哈马(Bahamas)</option>
+                  <option value="BD|BD - 孟加拉(Bangladesh)">BD - 孟加拉(Bangladesh)</option>
+                  <option value="BY|BY - 白俄罗斯(Belarus)">BY - 白俄罗斯(Belarus)</option>
+                  <option value="BZ|BZ - 伯利兹(Belize)">BZ - 伯利兹(Belize)</option>
+                  <option value="BJ|BJ - 贝宁(Benin)">BJ - 贝宁(Benin)</option>
+                  <option value="BT|BT - 不丹(Bhutan)">BT - 不丹(Bhutan)</option>
+                  <option value="BO|BO - 玻利维亚(Bolivia)">BO - 玻利维亚(Bolivia)</option>
+                  <option value="BQ|BQ - 博内尔岛、圣尤斯特歇斯岛和萨巴岛(Bonaire, Sint Eustatius And Saba)">BQ - 博内尔岛、圣尤斯特歇斯岛和萨巴岛(Bonaire, Sint Eustatius And Saba)</option>
+                  <option value="BA|BA - 波斯尼亚和黑塞哥维那(Bosnia And Herzegovina)">BA - 波斯尼亚和黑塞哥维那(Bosnia And Herzegovina)</option>
+                  <option value="BW|BW - 博茨瓦纳(Botswana)">BW - 博茨瓦纳(Botswana)</option>
+                  <option value="VG|VG - 英属维尔京群岛(British Virgin Islands)">VG - 英属维尔京群岛(British Virgin Islands)</option>
+                  <option value="BN|BN - 文莱(Brunei)">BN - 文莱(Brunei)</option>
+                  <option value="BG|BG - 保加利亚(Bulgaria)">BG - 保加利亚(Bulgaria)</option>
+                  <option value="BF|BF - 布基纳法索(Burkina Faso)">BF - 布基纳法索(Burkina Faso)</option>
+                  <option value="KH|KH - 柬埔寨(Cambodia)">KH - 柬埔寨(Cambodia)</option>
+                  <option value="CM|CM - 喀麦隆(Cameroon)">CM - 喀麦隆(Cameroon)</option>
+                  <option value="IC|IC - 加那利群岛(Canary Islands)">IC - 加那利群岛(Canary Islands)</option>
+                  <option value="KY|KY - 开曼群岛(Cayman Islands)">KY - 开曼群岛(Cayman Islands)</option>
+                  <option value="CL|CL - 智利(Chile)">CL - 智利(Chile)</option>
+                  <option value="CN|CN - 中国(China)">CN - 中国(China)</option>
+                  <option value="CO|CO - 哥伦比亚(Colombia)">CO - 哥伦比亚(Colombia)</option>
+                  <option value="CG|CG - 刚果(Congo)">CG - 刚果(Congo)</option>
+                  <option value="CK|CK - 库克群岛(Cook Islands)">CK - 库克群岛(Cook Islands)</option>
+                  <option value="CR|CR - 哥斯达黎加(Costa Rica)">CR - 哥斯达黎加(Costa Rica)</option>
+                  <option value="CI|CI - 科特迪瓦(Cote D Ivoire)">CI - 科特迪瓦(Cote D Ivoire)</option>
+                  <option value="HR|HR - 克罗地亚(Croatia)">HR - 克罗地亚(Croatia)</option>
+                  <option value="AN|AN - 库拉索岛(Curacao)">AN - 库拉索岛(Curacao)</option>
+                  <option value="CY|CY - 塞浦路斯(Cyprus)">CY - 塞浦路斯(Cyprus)</option>
+                  <option value="CZ|CZ - 捷克(Czech Republic)">CZ - 捷克(Czech Republic)</option>
+                  <option value="DK|DK - 丹麦(Denmark)">DK - 丹麦(Denmark)</option>
+                  <option value="DM|DM - 多米尼加(Dominica)">DM - 多米尼加(Dominica)</option>
+                  <option value="DO|DO - 多米尼加共和国(Dominican Republic)">DO - 多米尼加共和国(Dominican Republic)</option>
+                  <option value="TL|TL - 东帝汶(East Timor)">TL - 东帝汶(East Timor)</option>
+                  <option value="EC|EC - 厄瓜多尔(Ecuador)">EC - 厄瓜多尔(Ecuador)</option>
+                  <option value="EG|EG - 埃及(Egypt)">EG - 埃及(Egypt)</option>
+                  <option value="SV|SV - 萨尔瓦多(El Salvador)">SV - 萨尔瓦多(El Salvador)</option>
+                  <option value="EE|EE - 爱沙尼亚(Estonia)">EE - 爱沙尼亚(Estonia)</option>
+                  <option value="ET|ET - 埃塞俄比亚(Ethiopia)">ET - 埃塞俄比亚(Ethiopia)</option>
+                  <option value="FO|FO - 法鲁岛(Faroe Islands)">FO - 法鲁岛(Faroe Islands)</option>
+                  <option value="FJ|FJ - 斐济群岛(Fiji)">FJ - 斐济群岛(Fiji)</option>
+                  <option value="FI|FI - 芬兰(Finland)">FI - 芬兰(Finland)</option>
+                  <option value="GF|GF - 法属圭亚那(French Guiana)">GF - 法属圭亚那(French Guiana)</option>
+                  <option value="PF|PF - 法属波利尼西亚(French Polynesia)">PF - 法属波利尼西亚(French Polynesia)</option>
+                  <option value="GA|GA - 加蓬(Gabon)">GA - 加蓬(Gabon)</option>
+                  <option value="GM|GM - 冈比亚(Gambia)">GM - 冈比亚(Gambia)</option>
+                  <option value="GE|GE - 格鲁吉亚(Georgia)">GE - 格鲁吉亚(Georgia)</option>
+                  <option value="GH|GH - 加纳(Ghana)">GH - 加纳(Ghana)</option>
+                  <option value="GR|GR - 希腊(Greece)">GR - 希腊(Greece)</option>
+                  <option value="GL|GL - 格陵兰岛(Greenland)">GL - 格陵兰岛(Greenland)</option>
+                  <option value="GD|GD - 格林纳达(Grenada)">GD - 格林纳达(Grenada)</option>
+                  <option value="GP|GP - 瓜德罗普(Guadeloupe)">GP - 瓜德罗普(Guadeloupe)</option>
+                  <option value="GT|GT - 危地马拉(Guatemala)">GT - 危地马拉(Guatemala)</option>
+                  <option value="GG|GG - 根西(Guernsey)">GG - 根西(Guernsey)</option>
+                  <option value="GN|GN - 几内亚(Guinea Republic)">GN - 几内亚(Guinea Republic)</option>
+                  <option value="GY|GY - 圭亚那(Guyana)">GY - 圭亚那(Guyana)</option>
+                  <option value="HT|HT - 海地(Haiti)">HT - 海地(Haiti)</option>
+                  <option value="HN|HN - 洪都拉斯(Honduras)">HN - 洪都拉斯(Honduras)</option>
+                  <option value="HU|HU - 匈牙利(Hungary)">HU - 匈牙利(Hungary)</option>
+                  <option value="IS|IS - 冰岛(Iceland)">IS - 冰岛(Iceland)</option>
+                  <option value="ID|ID - 印度尼西亚(Indonesia)">ID - 印度尼西亚(Indonesia)</option>
+                  <option value="IQ|IQ - 伊拉克(Iraq)">IQ - 伊拉克(Iraq)</option>
+                  <option value="IE|IE - 爱尔兰(Ireland)">IE - 爱尔兰(Ireland)</option>
+                  <option value="IL|IL - 以色列(Israel)">IL - 以色列(Israel)</option>
+                  <option value="JM|JM - 牙买加(Jamaica)">JM - 牙买加(Jamaica)</option>
+                  <option value="JO|JO - 约旦(Jordan)">JO - 约旦(Jordan)</option>
+                  <option value="KZ|KZ - 哈萨克斯坦(Kazakhstan)">KZ - 哈萨克斯坦(Kazakhstan)</option>
+                  <option value="KE|KE - 肯尼亚(Kenya)">KE - 肯尼亚(Kenya)</option>
+                  <option value="XK|XK - 科索沃(Kosovo)">XK - 科索沃(Kosovo)</option>
+                  <option value="KW|KW - 科威特(Kuwait)">KW - 科威特(Kuwait)</option>
+                  <option value="KG|KG - 吉尔吉斯斯坦(Kyrgyzstan)">KG - 吉尔吉斯斯坦(Kyrgyzstan)</option>
+                  <option value="LV|LV - 拉托维亚(Latvia)">LV - 拉托维亚(Latvia)</option>
+                  <option value="LB|LB - 黎巴嫩(Lebanon)">LB - 黎巴嫩(Lebanon)</option>
+                  <option value="LS|LS - 莱索托(Lesotho)">LS - 莱索托(Lesotho)</option>
+                  <option value="LR|LR - 利比里亚(Liberia)">LR - 利比里亚(Liberia)</option>
+                  <option value="LY|LY - 利比亚(Libya)">LY - 利比亚(Libya)</option>
+                  <option value="LT|LT - 立陶苑(Lithuania)">LT - 立陶苑(Lithuania)</option>
+                  <option value="MW|MW - 马拉维(Malawi)">MW - 马拉维(Malawi)</option>
+                  <option value="MY|MY - 马来西亚(Malaysia)">MY - 马来西亚(Malaysia)</option>
+                  <option value="MV|MV - 马尔代夫(Maldives)">MV - 马尔代夫(Maldives)</option>
+                  <option value="ML|ML - 马里(Mali)">ML - 马里(Mali)</option>
+                  <option value="MT|MT - 马耳他(Malta)">MT - 马耳他(Malta)</option>
+                  <option value="MQ|MQ - 马提尼克(Martinique)">MQ - 马提尼克(Martinique)</option>
+                  <option value="MD|MD - 摩尔多瓦(Moldova)">MD - 摩尔多瓦(Moldova)</option>
+                  <option value="MN|MN - 蒙古(Mongolia)">MN - 蒙古(Mongolia)</option>
+                  <option value="ME|ME - 黑山共和国(Montenegro)">ME - 黑山共和国(Montenegro)</option>
+                  <option value="MA|MA - 摩洛哥(Morocco)">MA - 摩洛哥(Morocco)</option>
+                  <option value="MZ|MZ - 莫桑比克(Mozambique)">MZ - 莫桑比克(Mozambique)</option>
+                  <option value="MM|MM - 缅甸(Myanmar)">MM - 缅甸(Myanmar)</option>
+                  <option value="NA|NA - 纳米比亚(Namibia)">NA - 纳米比亚(Namibia)</option>
+                  <option value="NP|NP - 尼泊尔(Nepal)">NP - 尼泊尔(Nepal)</option>
+                  <option value="NC|NC - 新喀里多尼亚(New Caledonia)">NC - 新喀里多尼亚(New Caledonia)</option>
+                  <option value="NZ|NZ - 新西兰(New Zealand)">NZ - 新西兰(New Zealand)</option>
+                  <option value="NI|NI - 尼加拉瓜(Nicaragua)">NI - 尼加拉瓜(Nicaragua)</option>
+                  <option value="NE|NE - 尼日尔(Niger)">NE - 尼日尔(Niger)</option>
+                  <option value="NG|NG - 尼日利亚(Nigeria)">NG - 尼日利亚(Nigeria)</option>
+                  <option value="NU|NU - 纽埃岛(Niue)">NU - 纽埃岛(Niue)</option>
+                  <option value="MP|MP - 北马利亚纳群岛(Northern Mariana Islands)">MP - 北马利亚纳群岛(Northern Mariana Islands)</option>
+                  <option value="NO|NO - 挪威(Norway)">NO - 挪威(Norway)</option>
+                  <option value="OM|OM - 阿曼(Oman)">OM - 阿曼(Oman)</option>
+                  <option value="PK|PK - 巴基斯坦(Pakistan)">PK - 巴基斯坦(Pakistan)</option>
+                  <option value="PS|PS - 巴勒斯坦(Palestinian Territory)">PS - 巴勒斯坦(Palestinian Territory)</option>
+                  <option value="PA|PA - 巴拿马(Panama)">PA - 巴拿马(Panama)</option>
+                  <option value="PG|PG - 巴布亚新几内亚(Papua New Guinea)">PG - 巴布亚新几内亚(Papua New Guinea)</option>
+                  <option value="PY|PY - 巴拉圭(Paraguay)">PY - 巴拉圭(Paraguay)</option>
+                  <option value="PE|PE - 秘鲁(Peru)">PE - 秘鲁(Peru)</option>
+                  <option value="PH|PH - 菲律宾(Philippines)">PH - 菲律宾(Philippines)</option>
+                  <option value="PL|PL - 波兰(Poland)">PL - 波兰(Poland)</option>
+                  <option value="PT|PT - 葡萄牙(Portugal)">PT - 葡萄牙(Portugal)</option>
+                  <option value="QA|QA - 卡塔尔(Qatar)">QA - 卡塔尔(Qatar)</option>
+                  <option value="RE|RE - 留尼汪岛(Reunion, Island Of)">RE - 留尼汪岛(Reunion, Island Of)</option>
+                  <option value="RO|RO - 罗马尼亚(Romania)">RO - 罗马尼亚(Romania)</option>
+                  <option value="RU|RU - 俄罗斯(Russian Federation)">RU - 俄罗斯(Russian Federation)</option>
+                  <option value="LC|LC - 圣卢西亚岛(Saint Lucia)">LC - 圣卢西亚岛(Saint Lucia)</option>
+                  <option value="MF|MF - 法属圣马丁(Saint Martin)">MF - 法属圣马丁(Saint Martin)</option>
+                  <option value="WS|WS - 西萨摩亚(Samoa)">WS - 西萨摩亚(Samoa)</option>
+                  <option value="SN|SN - 塞内加尔(Senegal)">SN - 塞内加尔(Senegal)</option>
+                  <option value="RS|RS - 塞尔维亚(Serbia)">RS - 塞尔维亚(Serbia)</option>
+                  <option value="SL|SL - 塞拉利昂(Sierra Leone)">SL - 塞拉利昂(Sierra Leone)</option>
+                  <option value="SX|SX - 荷属圣马丁(Sint Maarten)">SX - 荷属圣马丁(Sint Maarten)</option>
+                  <option value="SK|SK - 斯洛伐克(Slovakia)">SK - 斯洛伐克(Slovakia)</option>
+                  <option value="SI|SI - 斯洛文尼亚(Slovenia)">SI - 斯洛文尼亚(Slovenia)</option>
+                  <option value="SB|SB - 所罗门群岛(Solomon Islands)">SB - 所罗门群岛(Solomon Islands)</option>
+                  <option value="SS|SS - 南苏丹共和国 (South Sudan)">SS - 南苏丹共和国 (South Sudan)</option>
+                  <option value="LK|LK - 斯里兰卡(Sri Lanka)">LK - 斯里兰卡(Sri Lanka)</option>
+                  <option value="SD|SD - 苏丹(Sudan)">SD - 苏丹(Sudan)</option>
+                  <option value="SR|SR - 苏里南(Suriname)">SR - 苏里南(Suriname)</option>
+                  <option value="SZ|SZ - 斯威士兰(Swaziland)">SZ - 斯威士兰(Swaziland)</option>
+                  <option value="SE|SE - 瑞典(Sweden)">SE - 瑞典(Sweden)</option>
+                  <option value="CH|CH - 瑞士(Switzerland)">CH - 瑞士(Switzerland)</option>
+                  <option value="SY|SY - 叙利亚(Syria)">SY - 叙利亚(Syria)</option>
+                  <option value="TW|TW - 中国台湾(Taiwan)">TW - 中国台湾(Taiwan)</option>
+                  <option value="TJ|TJ - 塔吉克斯坦(Tajikistan)">TJ - 塔吉克斯坦(Tajikistan)</option>
+                  <option value="TZ|TZ - 坦桑尼亚(Tanzania)">TZ - 坦桑尼亚(Tanzania)</option>
+                  <option value="TM|TM - 土库曼斯坦(Turkmenistan)">TM - 土库曼斯坦(Turkmenistan)</option>
+                  <option value="TG|TG - 多哥(Togo)">TG - 多哥(Togo)</option>
+                  <option value="TO|TO - 汤加(Tonga)">TO - 汤加(Tonga)</option>
+                  <option value="TT|TT - 特利尼达和多巴哥(Trinidad And Tobago)">TT - 特利尼达和多巴哥(Trinidad And Tobago)</option>
+                  <option value="TN|TN - 突尼斯(Tunisia)">TN - 突尼斯(Tunisia)</option>
+                  <option value="TR|TR - 土耳其(Turkey)">TR - 土耳其(Turkey)</option>
+                  <option value="TC|TC - 特克斯和凯科斯群岛(Turks And Caicos Islands)">TC - 特克斯和凯科斯群岛(Turks And Caicos Islands)</option>
+                  <option value="UG|UG - 乌干达(Uganda)">UG - 乌干达(Uganda)</option>
+                  <option value="UA|UA - 乌克兰(Ukraine)">UA - 乌克兰(Ukraine)</option>
+                  <option value="UY|UY - 乌拉圭(Uruguay)">UY - 乌拉圭(Uruguay)</option>
+                  <option value="UZ|UZ - 乌兹别克斯坦(Uzbekistan)">UZ - 乌兹别克斯坦(Uzbekistan)</option>
+                  <option value="VU|VU - 新赫布里底(Vanuatu)">VU - 新赫布里底(Vanuatu)</option>
+                  <option value="VE|VE - 委内瑞拉(Venezuela)">VE - 委内瑞拉(Venezuela)</option>
+                  <option value="ZM|ZM - 赞比亚(Zambia)">ZM - 赞比亚(Zambia)</option>
+                  <option value="ZW|ZW - 津巴布韦(Zimbabwe)">ZW - 津巴布韦(Zimbabwe)</option>
+                  <option value="BH|BH - 巴林(Bahrain)">BH - 巴林(Bahrain)</option>
+                  <option value="BI|BI - 布隆迪(Burundi)">BI - 布隆迪(Burundi)</option>
+                  <option value="CV|CV - 佛得角(Cape Verde)">CV - 佛得角(Cape Verde)</option>
+                  <option value="CF|CF - 中非共和国(Central African Republic)">CF - 中非共和国(Central African Republic)</option>
+                  <option value="CU|CU - 古巴(Cuba)">CU - 古巴(Cuba)</option>
+                  <option value="DJ|DJ - 吉布提(Djibouti)">DJ - 吉布提(Djibouti)</option>
+                  <option value="ER|ER - 厄立特里亚(Eritrea)">ER - 厄立特里亚(Eritrea)</option>
+                  <option value="KI|KI - 基列巴提(Kiribati)">KI - 基列巴提(Kiribati)</option>
+                  <option value="LA|LA - 老挝(Laos)">LA - 老挝(Laos)</option>
+                  <option value="LU|LU - 卢森堡(Luxembourg)">LU - 卢森堡(Luxembourg)</option>
+                  <option value="MG|MG - 马达加斯加(Madagascar)">MG - 马达加斯加(Madagascar)</option>
+                  <option value="MR|MR - 毛里塔尼亚(Mauritania)">MR - 毛里塔尼亚(Mauritania)</option>
+                  <option value="KP|KP - 朝鲜(North Korea)">KP - 朝鲜(North Korea)</option>
+                  <option value="RW|RW - 卢旺达(Rwanda)">RW - 卢旺达(Rwanda)</option>
+                  <option value="YE|YE - 也门(Yemen)">YE - 也门(Yemen)</option>
+                  <option value="GQ|GQ - 赤道几内亚(Equatorial Guinea)">GQ - 赤道几内亚(Equatorial Guinea)</option>
+                  <option value="MK|MK - 马其顿(Macedonia)">MK - 马其顿(Macedonia)</option>
+                  <option value="VC|VC - 圣文森特(Saint Vincent And The Grenadines)">VC - 圣文森特(Saint Vincent And The Grenadines)</option>
+                  <option value="SM|SM - 圣马力诺(San Marino)">SM - 圣马力诺(San Marino)</option>
+                  <option value="IR|IR - 伊朗(Iran)">IR - 伊朗(Iran)</option>
+                  <option value="CD|CD - 刚果民主共和国(Congo Democratic Republic)">CD - 刚果民主共和国(Congo Democratic Republic)</option>
+                  <option value="YU|YU - 南斯拉夫(Yugoslavia)">YU - 南斯拉夫(Yugoslavia)</option>
+                  <option value="TD|TD - 乍得共和国(Chad)">TD - 乍得共和国(Chad)</option>
+                  <option value="SO|SO - 索马里(Somalia)">SO - 索马里(Somalia)</option>
+                  <option value="SC|SC - 塞舌尔(Seychelles)">SC - 塞舌尔(Seychelles)</option>
+                  <option value="MU|MU - 毛里求斯(Mauritius)">MU - 毛里求斯(Mauritius)</option>
+                  <option value="MO|MO - 中国澳门(Macau)">MO - 中国澳门(Macau)</option>
+                  <option value="MC|MC - 摩纳哥(Monaco)">MC - 摩纳哥(Monaco)</option>
+                  <option value="FL|FL - 列支敦斯登(Liechtenstein)">FL - 列支敦斯登(Liechtenstein)</option>
+                  <option value="GW|GW - 几内亚比绍(Guinea-bissau)">GW - 几内亚比绍(Guinea-bissau)</option>
+                </optgroup>
+              </select>
+            <input type="text" id="remotePostcode" placeholder="输入邮编或城市">
+            <button class="remote-btn" id="btnRemoteCheck" onclick="doRemoteCheck()">查询是否偏远</button>
+            <div class="remote-result" id="remoteResult" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 快捷链接 -->
+      <div class="sidebar-section" id="linkSection">
+        <div class="sidebar-section-title" onclick="toggleSidebarSection(this)">
+          <span class="title-text" data-section-id="linkSection" ondblclick="editSectionTitle(this)" title="双击改名">🔗 快捷链接</span> <span class="collapse-icon">▾</span>
+        </div>
+        <div class="sidebar-section-body" id="linkBody">
+          <div id="linkList"></div>
+          <button class="template-item" style="border-style:dashed;color:#b0bcc8;" onclick="addLink()">+ 添加链接</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="resizer" id="resizerSidebar"></div>
+
+    <!-- 内容区 -->
+    <div style="flex:1;min-width:0;" id="contentArea">
+      <!-- ====== 控制栏 ====== -->
+      <div class="control-bar" id="controlBar" style="display:none;">
+        <div class="stats-row" id="statsRow"></div>
+        <div class="filter-group">
+          <input class="filter-input" id="filterInput" placeholder="🔍 搜索单号/备注">
+          <span class="pin-badge" id="pinBadge" style="display:none;">📌 <span id="pinCount">0</span></span>
+          <button class="btn-export" id="btnExport">📥 导出 Excel</button>
+          <button class="btn-export" id="btnBackup" title="下载 data.json 备份">💾 备份</button>
+        </div>
+      </div>
+
+      <!-- ====== 左右分栏 ====== -->
+  <div class="split-layout">
+    <!-- 左：全部历史 -->
+    <div class="panel" id="panelAll">
+      <div class="panel-header">
+        📚 <span id="panelAllTitle">全部历史</span>
+        <span class="panel-count" id="countAll">0</span>
+        <div class="panel-actions">
+          <button id="btnRefreshActive" title="只刷新进行中的单号">🔄 刷新进行中</button>
+        </div>
+      </div>
+      <div class="panel-body" id="listAll"></div>
+      <div class="panel-empty" id="emptyAll">暂无跟踪记录，输入运单号开始查询</div>
+    </div>
+
+    <div class="resizer" id="resizerPanels"></div>
+
+    <!-- 右：今日查询 -->
+    <div class="panel" id="panelToday">
+      <div class="panel-header">
+        📅 <span id="panelTodayTitle">今日查询</span>
+        <span class="panel-count" id="countToday">0</span>
+        <div class="panel-actions">
+          <button id="btnRefreshToday" title="刷新今日查询的单号">🔄 刷新</button>
+          <button id="btnCollapseToday" title="折叠/展开今日查询" style="padding:5px 8px;font-size:12px;" onclick="togglePanelToday()">◀</button>
+        </div>
+      </div>
+      <div class="panel-body" id="listToday"></div>
+      <div class="panel-empty" id="emptyToday">今天还没有查询记录</div>
+    </div>
+
+    <div class="resizer" id="resizerRight"></div>
+
+    <!-- 折叠后显示的展开小条 -->
+    <div id="todayExpandStub" style="display:none;flex:0 0 28px;cursor:pointer;background:#fafbfc;border:1px solid #e0e6ee;border-radius:8px;writing-mode:vertical-rl;text-orientation:mixed;padding:8px 4px;font-size:12px;color:#6b7a90;user-select:none;" onclick="togglePanelToday()" title="展开今日查询">📅 今日查询 ▶</div>
+
+    <!-- 最右侧空白面板 -->
+    <div class="panel" id="panelRight" style="flex:0 0 0px;min-width:0;overflow:hidden;">
+      <div class="panel-header" style="justify-content:space-between;">
+        <span>📋 预留区</span>
+      </div>
+      <div class="panel-body" style="padding:12px;color:#9aabb8;font-size:13px;text-align:center;">
+        拖拽左侧分隔条拉出此区域
+      </div>
     </div>
   </div>
-
-  <div id="list"></div>
-  <div class="empty" id="empty">
-    <div class="icon">🔍</div>
-    <p id="emptyText">暂无跟踪记录，输入运单号开始查询</p>
-  </div>
+    </div><!-- 内容区 -->
+  </div><!-- 主布局 -->
 </div>
 
 <div class="toast" id="toast"></div>
@@ -293,16 +1055,19 @@
 <script>
 const inputNo = document.getElementById('inputNo');
 const btnSearch = document.getElementById('btnSearch');
-const listEl = document.getElementById('list');
-const emptyEl = document.getElementById('empty');
-const toolbar = document.getElementById('toolbar');
-const totalCount = document.getElementById('totalCount');
-const btnRefreshAll = document.getElementById('btnRefreshAll');
+const listAll = document.getElementById('listAll');
+const listToday = document.getElementById('listToday');
+const emptyAll = document.getElementById('emptyAll');
+const emptyToday = document.getElementById('emptyToday');
+const countAll = document.getElementById('countAll');
+const countToday = document.getElementById('countToday');
+const btnRefreshActive = document.getElementById('btnRefreshActive');
+const btnRefreshToday = document.getElementById('btnRefreshToday');
 const toast = document.getElementById('toast');
 const langToggle = document.getElementById('langToggle');
 const subtitle = document.getElementById('subtitle');
-const emptyText = document.getElementById('emptyText');
-const toolbarLabel = document.getElementById('toolbarLabel');
+const panelAllTitle = document.getElementById('panelAllTitle');
+const panelTodayTitle = document.getElementById('panelTodayTitle');
 const batchPanel = document.getElementById('batchPanel');
 const batchTextarea = document.getElementById('batchTextarea');
 const batchHint = document.getElementById('batchHint');
@@ -314,11 +1079,11 @@ const batchProgressFill = document.getElementById('batchProgressFill');
 const batchDone = document.getElementById('batchDone');
 const batchTotal = document.getElementById('batchTotal');
 const batchFail = document.getElementById('batchFail');
-const batchProgressText = document.getElementById('batchProgressText');
 
 let currentLang = localStorage.getItem('tracking_lang') || 'zh';
 let batchNumbers = [];
 let batchRunning = false;
+let searchHighlightTimer = null;
 
 // ---- 国际化 ----
 function t(zh, en) {
@@ -328,12 +1093,15 @@ function t(zh, en) {
 function updateLangUI() {
   langToggle.textContent = currentLang === 'zh' ? 'EN' : '中文';
   langToggle.classList.toggle('active', currentLang === 'en');
-  subtitle.textContent = t('输入运单号查询货物轨迹', 'Track your cargo by waybill number');
+  subtitle.textContent = t('货代全流程管理 · 轨迹跟踪 · 仓库速查 · 偏远查询', 'Freight Management · Tracking · Warehouse · Remote Area');
   inputNo.placeholder = t('输入运单号，回车查询', 'Enter waybill No. & press Enter');
   btnSearch.textContent = t('查询', 'Track');
-  emptyText.textContent = t('暂无跟踪记录，输入运单号开始查询', 'No records yet. Enter a waybill to start.');
-  toolbarLabel.innerHTML = t('共 <span class="count" id="totalCount">0</span> 票', '<span class="count" id="totalCount">0</span> shipment(s)');
-  btnRefreshAll.textContent = t('🔄 刷新全部', '🔄 Refresh all');
+  panelAllTitle.textContent = t('全部历史', 'All History');
+  panelTodayTitle.textContent = t('今日查询', 'Today');
+  document.getElementById('emptyAll').textContent = t('暂无跟踪记录，输入运单号开始查询', 'No records yet. Enter a waybill to start.');
+  document.getElementById('emptyToday').textContent = t('今天还没有查询记录', 'No queries today yet');
+  btnRefreshActive.textContent = t('🔄 刷新进行中', '🔄 Refresh Active');
+  btnRefreshToday.textContent = t('🔄 刷新', '🔄 Refresh');
   btnBatchSearch.textContent = t('批量查询', 'Batch query');
   btnBatchCancel.textContent = t('取消', 'Cancel');
   btnBatchMode.textContent = t('📋 批量', '📋 Batch');
@@ -462,74 +1230,8 @@ async function refreshAllFn() {
   return res.json();
 }
 
-// ---- 状态与渲染 ----
-function getLatestEvent(item) {
-  if (!item || !item.dataDict || !item.dataDict.list || item.dataDict.list.length === 0) return null;
-  return item.dataDict.list[0];
-}
-
-function extractEstimatedDate(content) {
-  if (!content) return null;
-  // 匹配: 预计 2026-06-01、预计 06-01、预计到达时间 2026-06-01、ETA 2026-06-01
-  const m = content.match(/(\d{4}[-/]\d{1,2}[-/]\d{1,2})/);
-  if (m) {
-    const d = new Date(m[1].replace(/\//g, '-'));
-    if (!isNaN(d)) return d;
-  }
-  // 匹配 MM-DD 格式（无年份）
-  const m2 = content.match(/预计.*?(\d{1,2})[-/](\d{1,2})/);
-  if (m2) {
-    const d = new Date();
-    d.setMonth(parseInt(m2[1]) - 1, parseInt(m2[2]));
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }
-  return null;
-}
-
-function calcStatus(item) {
-  if (!item || item.result === false) return 'fail';
-  const ev = getLatestEvent(item);
-  if (!ev) return 'pending';
-  const content = (ev.content || ev.content_loc || '');
-  const contentEn = (ev.content_en || '');
-
-  // 已签收/已到港 → 已完成
-  if (/已签收|已到港|已到目的地|已到仓库/.test(content)) return 'completed';
-  if (/delivered|signed for|arrived at (destination|warehouse)/i.test(contentEn)) return 'completed';
-
-  // 尝试从内容中提取预计到港日期
-  const dateText = content || contentEn;
-  const eta = extractEstimatedDate(dateText);
-
-  if (eta) {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((eta - now) / (1000 * 60 * 60 * 24));
-    if (diffDays >= 0 && diffDays <= 3) return 'arriving';  // 快到港
-    return 'in_transit';  // 运输中
-  }
-
-  // 没有日期，根据关键词判断
-  if (/预计|中转|安排|运输途中/.test(content)) return 'in_transit';
-  if (/estimated|in transit|scheduled|on the way/i.test(contentEn)) return 'in_transit';
-  return 'in_transit';
-}
-
-function statusLabel(s) {
-  if (currentLang === 'en') {
-    if (s === 'arriving') return 'Arriving';
-    if (s === 'in_transit') return 'In Transit';
-    if (s === 'completed') return 'Completed';
-    if (s === 'fail') return 'Failed';
-    return 'Pending';
-  }
-  if (s === 'arriving') return '快到港';
-  if (s === 'in_transit') return '运输中';
-  if (s === 'completed') return '已完成';
-  if (s === 'fail') return '查询失败';
-  return '待更新';
-}
+// ---- 状态与渲染（引用共享模块）----
+const { getLatestEvent, calcStatus, statusLabel, extractEstimatedDate } = window.StatusCalculator;
 
 function eventContent(ev) {
   if (!ev) return '';
@@ -544,9 +1246,13 @@ function formatTime(iso) {
   return `${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function formatDateShort(d) {
+  if (!d || isNaN(d.getTime())) return '';
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+
 function formatEventTime(t) {
   if (!t) return '';
-  // 格式: /Date(1716518400000+0800)/ 或 ISO
   if (typeof t === 'string' && t.startsWith('/Date(')) {
     const ms = parseInt(t.match(/\d+/)[0]);
     return formatTime(new Date(ms).toISOString());
@@ -554,70 +1260,326 @@ function formatEventTime(t) {
   return formatTime(t);
 }
 
+// ---- 全程时效 ----
+function getTransitInfo(item) {
+  const events = (item.result && item.result.dataDict && item.result.dataDict.list) || [];
+  if (events.length === 0) return null;
+
+  // 事件按 id 升序排列：id 越大越早，id=1 最新
+  const sorted = [...events].sort((a, b) => (a.id || 0) - (b.id || 0));
+  const first = sorted[0];   // id=1，最新事件
+  const last = sorted[sorted.length - 1]; // 最大 id，最早事件
+
+  const startDate = new Date(last.created);
+  const endDate = new Date(first.created);
+  const now = new Date();
+
+  if (isNaN(startDate.getTime())) return null;
+
+  const status = calcStatus(item.result);
+  const isCompleted = status === 'completed';
+
+  // 已完成：最早 → 完成事件；进行中：最早 → 今天
+  const end = isCompleted ? endDate : now;
+  const totalDays = Math.ceil((end.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  return {
+    totalDays,
+    startDate,
+    endDate: isCompleted ? endDate : null,
+    isCompleted,
+    startStr: formatDateShort(startDate),
+    endStr: isCompleted ? formatDateShort(endDate) : null,
+  };
+}
+
+// ---- 剩余天数计算 ----
+function getDaysRemaining(item) {
+  const ev = getLatestEvent(item.result);
+  if (!ev) return null;
+  const content = ev.content || ev.content_loc || ev.content_en || '';
+  const eta = extractEstimatedDate(content);
+  if (!eta) return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((eta.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return diff;
+}
+
+function getETADate(item) {
+  const ev = getLatestEvent(item.result);
+  if (!ev) return null;
+  const content = ev.content || ev.content_loc || ev.content_en || '';
+  return extractEstimatedDate(content);
+}
+
+// ---- 今日判断 ----
+function isToday(iso) {
+  if (!iso) return false;
+  const d = new Date(iso);
+  const today = new Date();
+  return d.getFullYear() === today.getFullYear() &&
+         d.getMonth() === today.getMonth() &&
+         d.getDate() === today.getDate();
+}
+
+// ---- 置顶 ----
+function getPins() {
+  try { return JSON.parse(localStorage.getItem('tracking_pins') || '[]'); }
+  catch { return []; }
+}
+function savePins(pins) { localStorage.setItem('tracking_pins', JSON.stringify(pins)); }
+function isPinned(no) { return getPins().includes(no); }
+function togglePin(no, btn) {
+  const pins = getPins();
+  const idx = pins.indexOf(no);
+  if (idx >= 0) { pins.splice(idx, 1); }
+  else { pins.push(no); }
+  savePins(pins);
+  // 更新同名单号的所有 pin 按钮
+  document.querySelectorAll(`.btn-pin`).forEach(b => {
+    if (b.closest('.card') && b.closest('.card').getAttribute('data-no') === no.replace(/"/g, '&quot;')) {
+      b.classList.toggle('pinned', isPinned(no));
+    }
+  });
+  // 更新左右两侧卡片的 pinned class
+  document.querySelectorAll(`.card[data-no="${no.replace(/"/g, '&quot;')}"]`).forEach(c => {
+    c.classList.toggle('pinned', isPinned(no));
+  });
+  updatePinBadge();
+  render();
+}
+
+function updatePinBadge() {
+  const pins = getPins();
+  const badge = document.getElementById('pinBadge');
+  const count = document.getElementById('pinCount');
+  if (pins.length > 0) {
+    badge.style.display = 'inline';
+    count.textContent = pins.length;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ---- 筛选 ----
+let filterText = '';
+let filterStatus = null; // null = 全部, or status string
+
+document.getElementById('filterInput').addEventListener('input', function() {
+  filterText = this.value.trim().toLowerCase();
+  render();
+});
+
+function matchesFilter(no, item) {
+  if (filterStatus && calcStatus(item.result) !== filterStatus) return false;
+  if (!filterText) return true;
+  if (no.toLowerCase().includes(filterText)) return true;
+  if (item.note && item.note.toLowerCase().includes(filterText)) return true;
+  if (item.salesperson && item.salesperson.toLowerCase().includes(filterText)) return true;
+  if (item.supplier && item.supplier.toLowerCase().includes(filterText)) return true;
+  if (item.supplierNo && item.supplierNo.toLowerCase().includes(filterText)) return true;
+  if (item.warehouse && item.warehouse.toLowerCase().includes(filterText)) return true;
+  const ev = getLatestEvent(item.result);
+  if (ev) {
+    const c = eventContent(ev).toLowerCase();
+    if (c.includes(filterText)) return true;
+  }
+  return false;
+}
+
+// ---- 统计 ----
+function renderStats(entries) {
+  const counts = { arriving: 0, in_transit: 0, pending: 0, completed: 0, fail: 0 };
+  for (const [, item] of entries) {
+    const s = calcStatus(item.result);
+    if (counts[s] !== undefined) counts[s]++;
+  }
+  const statuses = ['arriving', 'in_transit', 'pending', 'completed', 'fail'];
+  const labels = {
+    arriving: t('快到港', 'Arriving'),
+    in_transit: t('运输中', 'In Transit'),
+    pending: t('待更新', 'Pending'),
+    completed: t('已完成', 'Done'),
+    fail: t('失败', 'Failed'),
+  };
+
+  let html = `<span class="stat-pill all${filterStatus === null ? ' active' : ''}" onclick="setStatusFilter(null)">📊 ${t('全部', 'All')} <b>${entries.length}</b></span>`;
+  for (const s of statuses) {
+    if (counts[s] > 0 || filterStatus === s) {
+      html += `<span class="stat-pill ${s}${filterStatus === s ? ' active' : ''}" onclick="setStatusFilter('${s}')">${labels[s]} <b>${counts[s]}</b></span>`;
+      if (s === 'fail' && counts[s] > 0) {
+        html += `<button style="padding:2px 8px;font-size:11px;border:1px solid #e0c0c0;border-radius:6px;background:#fff;cursor:pointer;color:#c62828;" onclick="event.stopPropagation();copyFailedNos()" title="复制所有失败单号">📋 复制单号</button>`;
+      }
+    }
+  }
+  document.getElementById('statsRow').innerHTML = html;
+}
+
+async function copyFailedNos() {
+  const history = await getHistory();
+  const failed = Object.entries(history)
+    .filter(([, item]) => calcStatus(item.result) === 'fail')
+    .map(([no]) => no);
+  if (failed.length === 0) { showToast('没有失败的单号', true); return; }
+  navigator.clipboard.writeText(failed.join('\n')).then(() => {
+    showToast('✅ 已复制 ' + failed.length + ' 个单号');
+  }).catch(() => showToast('复制失败', true));
+}
+
+function setStatusFilter(s) {
+  filterStatus = s;
+  document.getElementById('filterInput').value = '';
+  filterText = '';
+  render();
+}
+
+// ---- 排序：置顶优先 → 快到港 → 运输中 → 待更新 → 已完成 → 失败 ----
+// 同状态内按预计到港日期升序（越近越前），无日期的排后面
+const SORT_PRIORITY = { arriving: 0, in_transit: 1, pending: 2, completed: 3, fail: 4 };
+
+function sortEntries(entries) {
+  const pins = getPins();
+  return entries.sort((a, b) => {
+    // 置顶优先
+    const pa = pins.includes(a[0]) ? 0 : 1;
+    const pb = pins.includes(b[0]) ? 0 : 1;
+    if (pa !== pb) return pa - pb;
+
+    const sa = SORT_PRIORITY[calcStatus(a[1].result)] ?? 99;
+    const sb = SORT_PRIORITY[calcStatus(b[1].result)] ?? 99;
+    if (sa !== sb) return sa - sb;
+
+    // 同状态：按预计到港日期升序（有日期的排前面）
+    const da = getETADate(a[1]);
+    const db = getETADate(b[1]);
+    if (da && db) return da.getTime() - db.getTime();
+    if (da && !db) return -1;
+    if (!da && db) return 1;
+
+    // 都没日期，按更新时间降序
+    return (b[1].updatedAt || '').localeCompare(a[1].updatedAt || '');
+  });
+}
+
+// ---- 渲染卡片 HTML ----
+function renderCardHTML(no, item) {
+  const status = calcStatus(item.result);
+  const latest = getLatestEvent(item.result);
+  const lastUpdate = formatTime(item.updatedAt);
+  const events = (item.result && item.result.dataDict && item.result.dataDict.list) || [];
+  const briefText = latest ? eventContent(latest) : '';
+  const days = getDaysRemaining(item);
+  const transit = getTransitInfo(item);
+
+  // 时效标签
+  let transitHTML = '';
+  if (transit) {
+    if (transit.isCompleted) {
+      transitHTML = `<span class="transit-tag done" title="${t('最早轨迹→签收', 'First event→Signed')}">✅ ${t('全程', 'Total')} ${transit.totalDays}${t('天', 'd')}<span class="transit-range">${transit.startStr}→${transit.endStr}</span></span>`;
+    } else {
+      transitHTML = `<span class="transit-tag active" title="${t('最早轨迹至今', 'First event→Today')}">⏳ ${t('已运输', 'In transit')} ${transit.totalDays}${t('天', 'd')}<span class="transit-range">${transit.startStr}→</span></span>`;
+    }
+  }
+
+  // 快到港高亮 class
+  let cardExtraClass = '';
+  let daysHTML = '';
+  if (status === 'arriving') {
+    if (days !== null && days >= 0 && days <= 1) {
+      cardExtraClass = 'urgent';
+      daysHTML = `<span class="days-left urgent">${t('还有' + days + '天到港', days + 'd to port')}</span>`;
+    } else if (days !== null && days >= 2 && days <= 3) {
+      cardExtraClass = 'warning';
+      daysHTML = `<span class="days-left warning">${t('还有' + days + '天到港', days + 'd to port')}</span>`;
+    }
+  }
+
+  const updateLabel = t('更新', 'Updated');
+
+  return `
+    <div class="card${isPinned(no) ? ' pinned' : ''} ${cardExtraClass}" data-no="${no.replace(/"/g, '&quot;')}">
+      <div class="card-header" onclick="toggleCard(this)">
+        <div class="card-header-row main">
+          <span class="no">${escHtml(no)}</span>
+          <span class="card-note${item.note ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="note" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加客户名', 'Click to add customer')}">${item.note ? escHtml(item.note) : (currentLang === 'zh' ? '+ 客户' : '+ Customer')}</span>
+          <span class="card-sp${item.salesperson ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="salesperson" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加业务员', 'Click to add salesperson')}">${item.salesperson ? escHtml(item.salesperson) : (currentLang === 'zh' ? '+ 业务' : '+ Sales')}</span>
+          <span class="card-supplier${item.supplier ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="supplier" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加上家配合商', 'Click to add supplier')}">${item.supplier ? escHtml(item.supplier) : (currentLang === 'zh' ? '+ 配合商' : '+ Supplier')}</span>
+          <span class="card-warehouse${item.warehouse ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="warehouse" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加仓库', 'Click to add warehouse')}">${item.warehouse ? escHtml(item.warehouse) : (currentLang === 'zh' ? '+ 仓库' : '+ WH')}</span>
+          <span class="status-tag ${status}">${statusLabel(status, currentLang)}</span>
+          <span style="flex:1;"></span>
+          <span class="card-actions" onclick="event.stopPropagation();">
+            <button class="btn-pin${isPinned(no) ? ' pinned' : ''}" onclick="togglePin('${escHtml(no)}', this)" title="${t('置顶', 'Pin')}">📌</button>
+            <button onclick="refreshOne('${escHtml(no)}', this)" title="${t('刷新', 'Refresh')}">🔄</button>
+            <button class="btn-del" onclick="deleteOne('${escHtml(no)}', this)" title="${t('删除', 'Delete')}">✕</button>
+          </span>
+          <span class="arrow">▾</span>
+        </div>
+        <div class="card-header-row sub">
+          <span class="card-supplier-no${item.supplierNo ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="supplierNo" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加上家单号', 'Click to add supplier No')}">${item.supplierNo ? escHtml(item.supplierNo) : (currentLang === 'zh' ? '+ 上家单号' : '+ Sup No')}</span>
+          ${transitHTML}
+          ${daysHTML}
+          ${briefText ? `<span class="brief-status">${escHtml(briefText)}</span>` : ''}
+          ${lastUpdate ? '<span class="meta">' + updateLabel + ' ' + lastUpdate + '</span>' : ''}
+        </div>
+      </div>
+      <div class="card-body">
+        ${events.length === 0 ? `<div class="no-events">${t('暂无轨迹信息', 'No tracking info yet')}</div>` : ''}
+        <ul class="event-list">
+          ${events.map(ev => `
+            <li class="event-item">
+              <div class="event-dot"></div>
+              <div class="event-content">${escHtml(eventContent(ev))}</div>
+              <div class="event-time">${formatEventTime(ev.created)}</div>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    </div>`;
+}
+
 function render() {
   getHistory().then(history => {
-    const entries = Object.entries(history);
-    if (entries.length === 0) {
-      emptyEl.style.display = 'block';
-      listEl.innerHTML = '';
-      toolbar.style.display = 'none';
-      return;
+    const allEntries = sortEntries(Object.entries(history));
+    const filteredAll = allEntries.filter(([no, item]) => matchesFilter(no, item));
+    const todayEntries = filteredAll.filter(([, item]) => isToday(item.updatedAt));
+
+    // 控制栏
+    const controlBar = document.getElementById('controlBar');
+    controlBar.style.display = allEntries.length > 0 ? 'flex' : 'none';
+    renderStats(filteredAll);
+    updatePinBadge();
+
+    // ---- 左侧：全部历史 ----
+    if (filteredAll.length === 0) {
+      emptyAll.style.display = 'block';
+      listAll.innerHTML = '';
+      emptyAll.textContent = filterStatus || filterText ? t('没有匹配的记录', 'No matching records') : t('暂无跟踪记录，输入运单号开始查询', 'No records yet. Enter a waybill to start.');
+    } else {
+      emptyAll.style.display = 'none';
+      let html = '';
+      for (const [no, item] of filteredAll) {
+        html += renderCardHTML(no, item);
+      }
+      listAll.innerHTML = html;
     }
-    emptyEl.style.display = 'none';
-    toolbar.style.display = 'flex';
-    totalCount.textContent = entries.length;
+    countAll.textContent = filteredAll.length;
 
-    // 按状态排序：已完成 → 运输中 → 快到港 → 查询失败
-    const statusPriority = { completed: 0, in_transit: 1, arriving: 2, fail: 3, pending: 4 };
-    entries.sort((a, b) => {
-      const pa = statusPriority[calcStatus(a[1].result)] ?? 99;
-      const pb = statusPriority[calcStatus(b[1].result)] ?? 99;
-      if (pa !== pb) return pa - pb;
-      return (b[1].updatedAt || '').localeCompare(a[1].updatedAt || '');
-    });
-
-    let html = '';
-    for (const [no, item] of entries) {
-      const status = calcStatus(item.result);
-      const latest = getLatestEvent(item.result);
-      const lastUpdate = formatTime(item.updatedAt);
-      const events = (item.result && item.result.dataDict && item.result.dataDict.list) || [];
-
-      const briefText = latest ? eventContent(latest) : '';
-      const updateLabel = t('更新', 'Updated');
-
-      html += `
-        <div class="card" data-no="${no.replace(/"/g, '&quot;')}">
-          <div class="card-header" onclick="toggleCard(this)">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
-              <span class="no">${escHtml(no)}</span>
-              <span class="status-tag ${status}">${statusLabel(status)}</span>
-              ${briefText ? `<span class="brief-status">${escHtml(briefText)}</span>` : ''}
-            </div>
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span class="meta">${lastUpdate ? updateLabel + ' ' + lastUpdate : ''}</span>
-              <span class="card-actions">
-                <button onclick="refreshOne('${escHtml(no)}', this)" title="${t('刷新', 'Refresh')}">🔄</button>
-                <button class="btn-del" onclick="deleteOne('${escHtml(no)}', this)" title="${t('删除', 'Delete')}">✕</button>
-              </span>
-              <span class="arrow">▾</span>
-            </div>
-          </div>
-          <div class="card-body">
-            ${events.length === 0 ? `<div class="no-events">${t('暂无轨迹信息', 'No tracking info yet')}</div>` : ''}
-            <ul class="event-list">
-              ${events.map(ev => `
-                <li class="event-item">
-                  <div class="event-dot"></div>
-                  <div class="event-content">${escHtml(eventContent(ev))}</div>
-                  <div class="event-time">${formatEventTime(ev.created)}</div>
-                </li>
-              `).join('')}
-            </ul>
-          </div>
-        </div>`;
+    // ---- 右侧：今日查询 ----
+    if (todayEntries.length === 0) {
+      emptyToday.style.display = 'block';
+      listToday.innerHTML = '';
+      emptyToday.textContent = filterStatus || filterText ? t('没有匹配的记录', 'No matching records') : t('今天还没有查询记录', 'No queries today yet');
+    } else {
+      emptyToday.style.display = 'none';
+      let html = '';
+      for (const [no, item] of todayEntries) {
+        html += renderCardHTML(no, item);
+      }
+      listToday.innerHTML = html;
     }
-    listEl.innerHTML = html;
+    countToday.textContent = todayEntries.length;
+
   }).catch(() => showToast(t('加载历史失败', 'Failed to load history'), true));
 }
 
@@ -631,6 +1593,22 @@ function toggleCard(header) {
   const arrow = header.querySelector('.arrow');
   body.classList.toggle('open');
   arrow.classList.toggle('open');
+}
+
+// ---- 高亮左侧对应卡片 ----
+function highlightInLeft(no) {
+  // 清除上一次的高亮
+  if (searchHighlightTimer) clearTimeout(searchHighlightTimer);
+  document.querySelectorAll('#listAll .card.highlight-flash').forEach(c => c.classList.remove('highlight-flash'));
+
+  const card = listAll.querySelector(`.card[data-no="${no.replace(/"/g, '&quot;')}"]`);
+  if (card) {
+    card.classList.add('highlight-flash');
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    searchHighlightTimer = setTimeout(() => {
+      card.classList.remove('highlight-flash');
+    }, 2000);
+  }
 }
 
 // ---- 操作 ----
@@ -647,6 +1625,8 @@ async function doSearch(no) {
       showToast(t('✅ 查询成功', '✅ Success'));
     }
     render();
+    // 查询成功后高亮左侧同名卡片
+    setTimeout(() => highlightInLeft(no), 100);
   } catch { showToast(t('网络错误', 'Network error'), true); }
   btnSearch.disabled = false;
   btnSearch.textContent = t('查询', 'Track');
@@ -665,23 +1645,632 @@ async function refreshOne(no, btn) {
   } catch { showToast(t('刷新失败', 'Refresh failed'), true); render(); }
 }
 
+// ---- 侧边栏：改标题 ----
+function getSectionTitles() {
+  try { return JSON.parse(localStorage.getItem('section_titles')) || {}; }
+  catch { return {}; }
+}
+
+function applySectionTitles() {
+  const titles = getSectionTitles();
+  document.querySelectorAll('.sidebar-section-title .title-text').forEach(el => {
+    const id = el.getAttribute('data-section-id');
+    if (id && titles[id]) el.textContent = titles[id];
+  });
+}
+
+function editSectionTitle(el) {
+  const id = el.getAttribute('data-section-id');
+  const current = el.textContent;
+  const input = document.createElement('input');
+  input.className = 'title-edit-input';
+  input.value = current;
+  input.onblur = () => {
+    const val = input.value.trim() || current;
+    el.textContent = val;
+    const titles = getSectionTitles();
+    titles[id] = val;
+    localStorage.setItem('section_titles', JSON.stringify(titles));
+    input.replaceWith(el);
+  };
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { el.textContent = current; input.replaceWith(el); }
+  };
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+applySectionTitles();
+
+// ---- 侧边栏：折叠 ----
+function toggleSidebarSection(titleEl) {
+  const body = titleEl.nextElementSibling;
+  const icon = titleEl.querySelector('.collapse-icon');
+  body.classList.toggle('hidden');
+  icon.classList.toggle('open');
+  // 保存折叠状态
+  const key = titleEl.parentElement.id + '_collapsed';
+  localStorage.setItem(key, body.classList.contains('hidden'));
+}
+
+// 初始化各区块折叠状态
+(function initSidebarCollapse() {
+  ['memoSection', 'tplSection', 'linkSection', 'remoteSection', 'rosterSection', 'whSection'].forEach(id => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    const key = id + '_collapsed';
+    if (localStorage.getItem(key) === 'true') {
+      const body = section.querySelector('.sidebar-section-body');
+      const icon = section.querySelector('.collapse-icon');
+      if (body) body.classList.add('hidden');
+      if (icon) icon.classList.remove('open');
+    }
+  });
+})();
+
+// ---- 侧边栏：备忘录列表 ----
+function getMemoItems() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('tracking_memo_items'));
+    if (Array.isArray(arr) && arr.length > 0) return arr;
+  } catch {}
+  return ['', '', '', '', '', '']; // 默认 6 行
+}
+function saveMemoItems(arr) {
+  // 去掉尾部连续空行
+  while (arr.length > 1 && !arr[arr.length - 1].trim()) arr.pop();
+  localStorage.setItem('tracking_memo_items', JSON.stringify(arr));
+}
+
+function renderMemo() {
+  const list = document.getElementById('memoList');
+  if (!list) return;
+  const items = getMemoItems();
+  // 确保至少有 5 行
+  while (items.length < 5) items.push('');
+
+  list.innerHTML = items.map((text, i) => `
+    <li class="memo-row">
+      <span class="memo-num">${i + 1}.</span>
+      <input class="memo-input" data-index="${i}" value="${escHtml(text)}" placeholder="...">
+      <button class="memo-del" data-index="${i}" title="${t('清空此行', 'Clear')}">✕</button>
+    </li>
+  `).join('');
+
+  // 绑定事件
+  list.querySelectorAll('.memo-input').forEach(inp => {
+    inp.addEventListener('input', debounceSaveMemo);
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const idx = parseInt(inp.dataset.index);
+        const items = getMemoItems();
+        // 在下一行插入空项
+        items.splice(idx + 1, 0, '');
+        saveMemoItems(items);
+        renderMemo();
+        // 聚焦新行
+        setTimeout(() => {
+          const next = document.querySelector(`.memo-input[data-index="${idx + 1}"]`);
+          if (next) next.focus();
+        }, 50);
+      }
+      if (e.key === 'Backspace' && !inp.value) {
+        const idx = parseInt(inp.dataset.index);
+        const items = getMemoItems();
+        if (items.length > 1) {
+          items.splice(idx, 1);
+          saveMemoItems(items);
+          renderMemo();
+          setTimeout(() => {
+            const prev = document.querySelector(`.memo-input[data-index="${Math.max(0, idx - 1)}"]`);
+            if (prev) prev.focus();
+          }, 50);
+        }
+      }
+    });
+  });
+
+  list.querySelectorAll('.memo-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index);
+      const items = getMemoItems();
+      items[idx] = '';
+      saveMemoItems(items);
+      renderMemo();
+    });
+  });
+}
+
+let memoSaveTimer;
+function debounceSaveMemo() {
+  clearTimeout(memoSaveTimer);
+  memoSaveTimer = setTimeout(() => {
+    const inputs = document.querySelectorAll('.memo-input');
+    const items = getMemoItems();
+    inputs.forEach(inp => {
+      const idx = parseInt(inp.dataset.index);
+      items[idx] = inp.value;
+    });
+    saveMemoItems(items);
+    const saved = document.getElementById('memoSaved');
+    if (saved) {
+      saved.textContent = t('已自动保存', 'Auto saved') + ' ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+    }
+    // 尾部空行过多时重新渲染以清理
+    let lastNonEmpty = items.length - 1;
+    while (lastNonEmpty >= 0 && !items[lastNonEmpty].trim()) lastNonEmpty--;
+    const emptyTrail = items.length - 1 - lastNonEmpty;
+    if (emptyTrail > 3) renderMemo();
+  }, 600);
+}
+
+renderMemo();
+
+// ---- 侧边栏：消息模板复制 ----
+function copyTemplate(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    showToast(t('✅ 已复制到剪贴板', '✅ Copied'));
+  }).catch(() => showToast(t('复制失败', 'Copy failed'), true));
+}
+
+// ---- 侧边栏：模板管理 (localStorage) ----
+const DEFAULT_TEMPLATES = [
+  { label: '催单', text: '请尽快提供单号，我需要安排查轨迹跟进' },
+  { label: '到港', text: '您好，您的货物已到港，预计近日安排派送' },
+  { label: '签收', text: '货物已签收，感谢您的信任，有需要随时联系' },
+  { label: '装柜', text: '装柜完成，预计发运，请留意到港通知' },
+];
+
+function getTemplates() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('tracking_templates_v2'));
+    if (Array.isArray(arr) && arr.length > 0) return arr;
+  } catch {}
+  return [...DEFAULT_TEMPLATES];
+}
+function saveTemplates(arr) { localStorage.setItem('tracking_templates_v2', JSON.stringify(arr)); }
+
+function renderTemplates() {
+  const list = document.getElementById('templateList');
+  if (!list) return;
+  const templates = getTemplates();
+  list.innerHTML = templates.map((tpl, i) => {
+    const text = typeof tpl === 'string' ? tpl : tpl.text;
+    const label = typeof tpl === 'string' ? '消息' : (tpl.label || '消息');
+    return `
+    <div class="template-item" style="display:flex;align-items:center;gap:5px;margin-bottom:5px;border:1px solid #e8ecf2;border-radius:7px;overflow:hidden;">
+      <span class="tpl-label" onclick="editTemplateLabel(${i})" title="${t('点击改标签', 'Click to edit label')}">${escHtml(label)}</span>
+      <span style="flex:1;padding:7px 4px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:#4a5a70;" onclick="copyTemplate('${text.replace(/'/g, "\\'")}')" title="${t('点击复制', 'Click to copy')}">${escHtml(text)}</span>
+      <button style="padding:4px 6px;font-size:11px;border:none;background:transparent;cursor:pointer;color:#9aabb8;" onclick="editTemplate(${i})" title="${t('编辑内容', 'Edit')}">✎</button>
+      <button style="padding:4px 6px;font-size:11px;border:none;background:transparent;cursor:pointer;color:#e0c0c0;" onclick="deleteTemplate(${i})" title="${t('删除', 'Delete')}">✕</button>
+    </div>
+  `}).join('');
+}
+
+function editTemplateLabel(i) {
+  const templates = getTemplates();
+  if (typeof templates[i] === 'string') templates[i] = { label: '消息', text: templates[i] };
+  const label = prompt(t('输入标签名（如：催单、到港）：', 'Enter label:'), templates[i].label || '');
+  if (label === null) return;
+  templates[i].label = label.trim() || '消息';
+  saveTemplates(templates);
+  renderTemplates();
+}
+
+function addTemplate() {
+  const label = prompt(t('输入标签（如：催单）：', 'Enter label:'), '');
+  if (label === null) return;
+  const text = prompt(t('输入消息内容：', 'Enter message:'));
+  if (!text || !text.trim()) return;
+  const templates = getTemplates();
+  templates.push({ label: label.trim() || '消息', text: text.trim() });
+  saveTemplates(templates);
+  renderTemplates();
+}
+
+function editTemplate(i) {
+  const templates = getTemplates();
+  if (typeof templates[i] === 'string') templates[i] = { label: '消息', text: templates[i] };
+  const text = prompt(t('编辑消息内容：', 'Edit message:'), templates[i].text);
+  if (text === null) return;
+  if (!text.trim()) { deleteTemplate(i); return; }
+  templates[i].text = text.trim();
+  saveTemplates(templates);
+  renderTemplates();
+}
+
+function deleteTemplate(i) {
+  const templates = getTemplates();
+  templates.splice(i, 1);
+  saveTemplates(templates);
+  renderTemplates();
+}
+
+// ---- 侧边栏：链接管理 (localStorage) ----
+const DEFAULT_LINKS = [
+  { name: 'zddexp 查轨迹', url: 'https://www.zddexp.com' },
+  { name: '飞书', url: 'https://www.feishu.cn' },
+];
+
+function getLinks() {
+  try {
+    const arr = JSON.parse(localStorage.getItem('tracking_links_v2'));
+    if (Array.isArray(arr) && arr.length > 0) return arr;
+  } catch {}
+  return [...DEFAULT_LINKS];
+}
+function saveLinks(arr) { localStorage.setItem('tracking_links_v2', JSON.stringify(arr)); }
+
+function renderLinks() {
+  const list = document.getElementById('linkList');
+  if (!list) return;
+  const links = getLinks();
+  list.innerHTML = links.map((link, i) => {
+    const name = link.name || link.url;
+    return `
+    <div style="display:flex;align-items:center;gap:2px;margin-bottom:3px;border:1px solid transparent;border-radius:7px;overflow:hidden;">
+      <span style="display:flex;flex-direction:column;line-height:1;">
+        <button class="sort-btn" onclick="moveLink(${i},-1)" title="上移"${i === 0 ? ' disabled' : ''}>▲</button>
+        <button class="sort-btn" onclick="moveLink(${i},1)" title="下移"${i === links.length - 1 ? ' disabled' : ''}>▼</button>
+      </span>
+      <a class="link-item" href="${(link.url || '').replace(/"/g, '&quot;')}" target="_blank" style="flex:1;padding:6px 4px;">${escHtml(name)}</a>
+      <button style="padding:4px 6px;font-size:11px;border:none;background:transparent;cursor:pointer;color:#9aabb8;" onclick="editLink(${i})" title="${t('编辑', 'Edit')}">✎</button>
+      <button style="padding:4px 6px;font-size:11px;border:none;background:transparent;cursor:pointer;color:#e0c0c0;" onclick="deleteLink(${i})" title="${t('删除', 'Delete')}">✕</button>
+    </div>
+  `}).join('');
+}
+
+function editLinkLabel(i) {
+  const links = getLinks();
+  const label = prompt(t('输入标签名：', 'Enter label:'), links[i].label || '');
+  if (label === null) return;
+  links[i].label = label.trim() || '链接';
+  saveLinks(links);
+  renderLinks();
+}
+
+function addLink() {
+  const name = prompt(t('输入链接名称：', 'Enter link name:'));
+  if (!name || !name.trim()) return;
+  let url = prompt(t('输入链接地址：', 'Enter link URL:'), 'https://');
+  if (!url || !url.trim()) return;
+  if (!url.startsWith('http')) url = 'https://' + url;
+  const links = getLinks();
+  links.push({ name: name.trim(), url: url.trim() });
+  saveLinks(links);
+  renderLinks();
+}
+
+function editLink(i) {
+  const links = getLinks();
+  const name = prompt(t('编辑链接名称：', 'Edit link name:'), links[i].name || '');
+  if (name === null) return;
+  if (!name.trim()) { deleteLink(i); return; }
+  const url = prompt(t('编辑链接地址：', 'Edit link URL:'), links[i].url || '');
+  if (url === null) return;
+  if (!url.trim()) { deleteLink(i); return; }
+  links[i].name = name.trim();
+  links[i].url = url.trim().startsWith('http') ? url.trim() : 'https://' + url.trim();
+  saveLinks(links);
+  renderLinks();
+}
+
+function moveLink(i, dir) {
+  const links = getLinks();
+  const newIdx = i + dir;
+  if (newIdx < 0 || newIdx >= links.length) return;
+  [links[i], links[newIdx]] = [links[newIdx], links[i]];
+  saveLinks(links);
+  renderLinks();
+}
+
+function deleteLink(i) {
+  const links = getLinks();
+  links.splice(i, 1);
+  saveLinks(links);
+  renderLinks();
+}
+
+// 初始化渲染
+renderTemplates();
+renderLinks();
+
+// ---- 导出 Excel (CSV) ----
+function exportCSV() {
+  getHistory().then(history => {
+    const entries = sortEntries(Object.entries(history));
+    const filtered = entries.filter(([no, item]) => matchesFilter(no, item));
+    if (filtered.length === 0) {
+      showToast(t('没有可导出的数据', 'No data to export'), true);
+      return;
+    }
+
+    const h = t;
+    const header = ['运单号', '状态', '客户', '业务员', '配合商', '仓库', '上家单号', '时效(天)', '最新轨迹', '更新时间', '剩余天数'];
+    const rows = [header.map(c => '"' + c + '"').join(',')];
+
+    for (const [no, item] of filtered) {
+      const status = statusLabel(calcStatus(item.result), currentLang);
+      const note = item.note || '';
+      const sp = item.salesperson || '';
+      const supplier = item.supplier || '';
+      const supplierNo = item.supplierNo || '';
+      const warehouse = item.warehouse || '';
+      const latest = getLatestEvent(item.result);
+      const brief = latest ? eventContent(latest).replace(/"/g, '""') : '';
+      const time = formatTime(item.updatedAt) || '';
+      const daysLeft = getDaysRemaining(item);
+      const daysLeftStr = daysLeft !== null && daysLeft >= 0 ? daysLeft + t('天', 'd') : '';
+      const transitDays = getTransitInfo(item);
+      const transitStr = transitDays ? transitDays.totalDays + t('天', 'd') : '';
+
+      rows.push([
+        '"' + no + '"',
+        '"' + status + '"',
+        '"' + note + '"',
+        '"' + sp + '"',
+        '"' + supplier + '"',
+        '"' + warehouse + '"',
+        '"' + supplierNo + '"',
+        '"' + transitStr + '"',
+        '"' + brief + '"',
+        '"' + time + '"',
+        '"' + daysLeftStr + '"',
+      ].join(','));
+    }
+
+    // BOM for Excel UTF-8
+    const BOM = '﻿';
+    const csv = BOM + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    a.href = url;
+    a.download = `货物跟踪_${dateStr}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(t('✅ 导出成功', '✅ Exported'));
+  });
+}
+
+document.getElementById('btnExport').addEventListener('click', exportCSV);
+
 async function deleteOne(no, btn) {
   if (!confirm(t(`确定删除 ${no} 的跟踪记录？`, `Delete tracking record for ${no}?`))) return;
   await deleteHistory(no);
   render();
 }
 
-btnRefreshAll.addEventListener('click', async () => {
-  btnRefreshAll.disabled = true;
-  btnRefreshAll.textContent = t('刷新中...', 'Refreshing...');
+// ---- 备注/业务员编辑 ----
+const FIELD_CONFIG = {
+  note: {
+    zh_empty: '+ 客户',
+    en_empty: '+ Customer',
+    zh_placeholder: '客户名',
+    en_placeholder: 'Customer',
+    selector: '.card-note',
+  },
+  salesperson: {
+    zh_empty: '+ 业务',
+    en_empty: '+ Sales',
+    zh_placeholder: '业务员',
+    en_placeholder: 'Salesperson',
+    selector: '.card-sp',
+  },
+  supplier: {
+    zh_empty: '+ 配合商',
+    en_empty: '+ Supplier',
+    zh_placeholder: '配合商',
+    en_placeholder: 'Supplier',
+    selector: '.card-supplier',
+  },
+  supplierNo: {
+    zh_empty: '+ 上家单号',
+    en_empty: '+ Sup No',
+    zh_placeholder: '上家单号',
+    en_placeholder: 'Supplier No',
+    selector: '.card-supplier-no',
+  },
+  warehouse: {
+    zh_empty: '+ 仓库',
+    en_empty: '+ WH',
+    zh_placeholder: '仓库',
+    en_placeholder: 'Warehouse',
+    selector: '.card-warehouse',
+  },
+};
+
+function getEmptyLabel(field) {
+  const cfg = FIELD_CONFIG[field];
+  return currentLang === 'zh' ? cfg.zh_empty : cfg.en_empty;
+}
+
+function startEditField(el) {
+  const no = el.getAttribute('data-no');
+  const field = el.getAttribute('data-field');
+  const cfg = FIELD_CONFIG[field];
+  const currentText = el.textContent === cfg.zh_empty || el.textContent === cfg.en_empty ? '' : el.textContent;
+
+  // 从全部历史记录中收集该字段的已有值（不看当前单号）
+  const existingValues = new Set();
+  getHistory().then(history => {
+    Object.values(history).forEach(item => {
+      const v = item[field];
+      if (v && v.trim() && v.trim() !== currentText) existingValues.add(v.trim());
+    });
+    // 追加到 datalist
+    const listEl = document.getElementById(listId);
+    if (listEl) {
+      existingValues.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        listEl.appendChild(opt);
+      });
+    }
+  });
+
+  const listId = 'dl_' + field;
+  // 确保页面有持久 datalist
+  let listEl = document.getElementById(listId);
+  if (!listEl) {
+    listEl = document.createElement('datalist');
+    listEl.id = listId;
+    document.body.appendChild(listEl);
+  }
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'card-note-input';
+  input.setAttribute('list', listId);
+  input.value = currentText;
+  input.placeholder = t(cfg.zh_placeholder, cfg.en_placeholder);
+  input.setAttribute('data-no', no);
+  input.setAttribute('data-field', field);
+
+  input.addEventListener('blur', () => saveField(input, el));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveField(input, el); }
+    if (e.key === 'Escape') { cancelEditField(input, el); }
+  });
+
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+function cancelEditField(input, el) {
+  const field = input.getAttribute('data-field');
+  const emptyLabel = getEmptyLabel(field);
+  el.innerHTML = emptyLabel;
+  el.classList.add('empty');
+  input.replaceWith(el);
+}
+
+async function saveField(input, el) {
+  const value = input.value.trim();
+  const no = input.getAttribute('data-no');
+  const field = input.getAttribute('data-field');
+  const cfg = FIELD_CONFIG[field];
+  const emptyLabel = getEmptyLabel(field);
+  const selector = cfg.selector;
+
+  // 重建 span
+  const span = el.cloneNode(true);
+  span.textContent = value || emptyLabel;
+  if (!value) span.classList.add('empty');
+  else span.classList.remove('empty');
+  span.onclick = function(e) { e.stopPropagation(); startEditField(this); };
+  // 追加到持久 datalist
+  if (value) {
+    const dl = document.getElementById('dl_' + field);
+    if (dl && !dl.querySelector('option[value="' + value.replace(/"/g, '&quot;') + '"]')) {
+      const opt = document.createElement('option');
+      opt.value = value;
+      dl.appendChild(opt);
+    }
+  }
+
+  input.replaceWith(span);
+
+  // 保存到后端
   try {
-    await refreshAllFn();
-    showToast(t('✅ 全部已刷新', '✅ All refreshed'));
+    const body = {};
+    body[field] = value;
+    await fetch(`/api/note/${encodeURIComponent(no)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    // 同步更新两边面板的同名单号同字段
+    document.querySelectorAll(`${selector}[data-no="${no.replace(/"/g, '&quot;')}"]`).forEach(other => {
+      if (other !== span) {
+        other.textContent = value || emptyLabel;
+        if (!value) other.classList.add('empty');
+        else other.classList.remove('empty');
+      }
+    });
+  } catch { showToast(t('保存失败', 'Save failed'), true); }
+}
+
+// ---- 刷新进行中（只刷未完成的单号）----
+async function refreshActive() {
+  btnRefreshActive.disabled = true;
+  btnRefreshActive.textContent = t('刷新中...', 'Refreshing...');
+  try {
+    const history = await getHistory();
+    const entries = Object.entries(history);
+    // 筛选出进行中的单号：非 completed 且非 fail
+    const activeEntries = entries.filter(([, item]) => {
+      const s = calcStatus(item.result);
+      return s !== 'completed' && s !== 'fail';
+    });
+
+    if (activeEntries.length === 0) {
+      showToast(t('没有需要刷新的单号', 'No active shipments to refresh'));
+      btnRefreshActive.disabled = false;
+      btnRefreshActive.textContent = t('🔄 刷新进行中', '🔄 Refresh Active');
+      return;
+    }
+
+    let done = 0, failed = 0;
+    for (const [no] of activeEntries) {
+      try {
+        const result = await trackQuery(no);
+        if (result.result === false) failed++;
+      } catch { failed++; }
+      done++;
+    }
+
+    if (failed === 0) {
+      showToast(t(`✅ ${done} 票全部刷新成功`, `✅ ${done} refreshed`));
+    } else {
+      showToast(t(`✅ ${done} 票完成，${failed} 票失败`, `✅ ${done} done, ${failed} failed`), !!failed);
+    }
     render();
-  } catch { showToast(t('部分刷新失败', 'Some failed'), true); render(); }
-  btnRefreshAll.disabled = false;
-  btnRefreshAll.textContent = t('🔄 刷新全部', '🔄 Refresh all');
-});
+  } catch { showToast(t('刷新失败', 'Refresh failed'), true); render(); }
+  btnRefreshActive.disabled = false;
+  btnRefreshActive.textContent = t('🔄 刷新进行中', '🔄 Refresh Active');
+}
+
+// ---- 刷新今日 ----
+async function refreshToday() {
+  btnRefreshToday.disabled = true;
+  btnRefreshToday.textContent = t('刷新中...', 'Refreshing...');
+  try {
+    const history = await getHistory();
+    const entries = Object.entries(history).filter(([, item]) => isToday(item.updatedAt));
+
+    if (entries.length === 0) {
+      showToast(t('今天还没有查询记录', 'No queries today'));
+      btnRefreshToday.disabled = false;
+      btnRefreshToday.textContent = t('🔄 刷新', '🔄 Refresh');
+      return;
+    }
+
+    let done = 0, failed = 0;
+    for (const [no] of entries) {
+      try {
+        const result = await trackQuery(no);
+        if (result.result === false) failed++;
+      } catch { failed++; }
+      done++;
+    }
+
+    if (failed === 0) {
+      showToast(t(`✅ ${done} 票全部刷新成功`, `✅ ${done} refreshed`));
+    } else {
+      showToast(t(`✅ ${done} 票完成，${failed} 票失败`, `✅ ${done} done, ${failed} failed`), !!failed);
+    }
+    render();
+  } catch { showToast(t('刷新失败', 'Refresh failed'), true); render(); }
+  btnRefreshToday.disabled = false;
+  btnRefreshToday.textContent = t('🔄 刷新', '🔄 Refresh');
+}
 
 // ---- 事件绑定 ----
 btnSearch.addEventListener('click', () => {
@@ -698,15 +2287,403 @@ inputNo.addEventListener('keydown', e => {
 
 btnBatchMode.addEventListener('click', () => toggleBatchMode());
 batchTextarea.addEventListener('input', updateBatchBtn);
-
 btnBatchSearch.addEventListener('click', doBatchSearch);
 btnBatchCancel.addEventListener('click', () => {
   if (batchRunning) return;
   toggleBatchMode(false);
 });
-btnBatchCancel.disabled = false;
+
+btnRefreshActive.addEventListener('click', refreshActive);
+btnRefreshToday.addEventListener('click', refreshToday);
 
 langToggle.addEventListener('click', toggleLang);
+
+// ---- 拖拽调节宽度 ----
+(function initResizers() {
+  function makeResizable(resizer, leftEl, rightEl, storageKey, minLeft, minRight) {
+    if (!resizer || !leftEl || !rightEl) return;
+
+    // 恢复保存的宽度
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const w = parseInt(saved);
+      if (w > 0) {
+        leftEl.style.width = w + 'px';
+        leftEl.style.flex = 'none';
+        rightEl.style.flex = '1 1 0%';
+      }
+    }
+
+    let dragging = false, startX, startW;
+
+    resizer.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      dragging = true;
+      startX = e.clientX;
+      startW = leftEl.getBoundingClientRect().width;
+      resizer.classList.add('active');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      let newW = Math.max(minLeft, Math.min(startW + dx, window.innerWidth - minRight));
+      leftEl.style.width = newW + 'px';
+      leftEl.style.flex = 'none';
+      rightEl.style.flex = '1 1 0%';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('active');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      // 保存
+      localStorage.setItem(storageKey, Math.round(leftEl.getBoundingClientRect().width));
+    });
+  }
+
+  makeResizable(
+    document.getElementById('resizerSidebar'),
+    document.getElementById('sidebar'),
+    document.getElementById('contentArea'),
+    'resizer_sidebar_w', 150, 400
+  );
+  makeResizable(
+    document.getElementById('resizerPanels'),
+    document.getElementById('panelAll'),
+    document.getElementById('panelToday'),
+    'resizer_panel_w', 250, 250
+  );
+  // 右边分隔条：今日查询 ↔ 预留区
+  makeResizable(
+    document.getElementById('resizerRight'),
+    document.getElementById('panelToday'),
+    document.getElementById('panelRight'),
+    'resizer_right_w', 200, 0
+  );
+})();
+
+// ---- 折叠今日查询 ----
+function togglePanelToday() {
+  const panel = document.getElementById('panelToday');
+  const resizerP = document.getElementById('resizerPanels');
+  const resizerR = document.getElementById('resizerRight');
+  const btn = document.getElementById('btnCollapseToday');
+  const header = panel.querySelector('.panel-header');
+  const body = panel.querySelector('.panel-body');
+  const empty = panel.querySelector('.panel-empty');
+  const count = panel.querySelector('.panel-count');
+  const refreshBtn = document.getElementById('btnRefreshToday');
+  const panelAll = document.getElementById('panelAll');
+
+  const isCollapsed = panel.classList.contains('today-collapsed');
+
+  if (isCollapsed) {
+    // 展开
+    panel.classList.remove('today-collapsed');
+    panel.style.cssText = '';
+    resizerP.style.display = '';
+    resizerR.style.display = '';
+    document.getElementById('todayExpandStub').style.display = 'none';
+    btn.textContent = '◀';
+    btn.title = '折叠今日查询';
+    panelAll.style.cssText = '';
+    // 恢复保存的宽度
+    const savedW = localStorage.getItem('resizer_panel_w');
+    if (savedW) {
+      panel.style.width = savedW + 'px';
+      panel.style.flex = 'none';
+      panelAll.style.flex = '1 1 0%';
+    }
+  } else {
+    // 折叠
+    panel.classList.add('today-collapsed');
+    panel.style.cssText = 'flex:0 0 0px;min-width:0;overflow:hidden;display:none;';
+    resizerP.style.display = 'none';
+    resizerR.style.display = 'none';
+    document.getElementById('todayExpandStub').style.display = '';
+    panelAll.style.cssText = 'flex:1 1 0%;';
+  }
+
+  localStorage.setItem('today_collapsed', panel.classList.contains('today-collapsed'));
+}
+
+// 恢复折叠状态
+(function initTodayCollapse() {
+  if (localStorage.getItem('today_collapsed') === 'true') {
+    // 等 render 完成后执行
+    setTimeout(() => togglePanelToday(), 100);
+  }
+})();
+
+// ---- 偏远查询 ----
+async function doRemoteCheck() {
+  const carrier = document.getElementById('remoteCarrier').value;
+  const countryEl = document.getElementById('remoteCountry');
+  const countryVal = countryEl.value; // format: "US|US - 美国(United States)"
+  const post_city = document.getElementById('remotePostcode').value.trim();
+  const resultEl = document.getElementById('remoteResult');
+  const btn = document.getElementById('btnRemoteCheck');
+
+  const parts = countryVal.split('|');
+  const country = parts[0];
+  const country_zw = parts[1] || countryVal;
+
+  if (!country) { showToast('请选择国家', true); return; }
+  if (!post_city) { showToast('请输入邮编或城市', true); return; }
+
+  const carriers = carrier === 'all' ? ['DHL','UPS','fedex','TNT'] : [carrier];
+
+  btn.disabled = true;
+  btn.textContent = carrier === 'all' ? '查询4家快递商...' : '查询中...';
+  resultEl.style.display = 'none';
+
+  try {
+    let allResults = [];
+    for (const c of carriers) {
+      const res = await fetch('/api/remote-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `country=${encodeURIComponent(country)}&country_zw=${encodeURIComponent(country_zw)}&post_city=${encodeURIComponent(post_city)}&express_company=${encodeURIComponent(c)}`,
+      });
+      const ret = await res.json();
+      if (ret.code == 1 && ret.data && ret.data.length > 0) {
+        allResults = allResults.concat(ret.data);
+      }
+    }
+
+    resultEl.style.display = 'block';
+    if (allResults.length > 0) {
+      const farItems = allResults.filter(d => d.is_far == 1);
+      const notFarItems = allResults.filter(d => d.is_far == 0);
+      let html = '';
+      if (farItems.length > 0) {
+        html += '<div style=\"color:#c62828;margin-bottom:4px;\">🔴 偏远：' + farItems.map(d => d.range_express_company).join(', ') + '</div>';
+      }
+      if (notFarItems.length > 0) {
+        html += '<div style=\"color:#2e7d32;\">✅ 非偏远：' + notFarItems.map(d => d.range_express_company).join(', ') + '</div>';
+      }
+      resultEl.className = 'remote-result ' + (farItems.length > 0 ? 'far' : 'not-far');
+      resultEl.innerHTML = html;
+    } else {
+      resultEl.className = 'remote-result error';
+      resultEl.textContent = '查询失败，请重试';
+    }
+  } catch {
+    resultEl.style.display = 'block';
+    resultEl.className = 'remote-result error';
+    resultEl.textContent = '网络错误，请重试';
+  }
+  btn.disabled = false;
+  btn.textContent = '查询是否偏远';
+}
+
+// 偏远查询回车快捷键
+document.getElementById('remotePostcode').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doRemoteCheck();
+});
+
+
+// ---- 仓库速查 ----
+function getWarehouses() {
+  try { return JSON.parse(localStorage.getItem('warehouse_list')) || []; }
+  catch { return []; }
+}
+function saveWarehouses(arr) { localStorage.setItem('warehouse_list', JSON.stringify(arr)); }
+
+function renderWarehouses() {
+  const filter = (document.getElementById('whSearch').value || '').trim().toLowerCase();
+  const list = document.getElementById('whList');
+  if (!list) return;
+  const items = getWarehouses();
+  const filtered = filter ? items.filter(w => w.supplier.toLowerCase().includes(filter)) : items;
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div style="font-size:12px;color:#b0bcc8;text-align:center;padding:12px 0;">' + (filter ? '没有匹配的仓库' : '暂无仓库，点击下方添加') + '</div>';
+    return;
+  }
+  list.innerHTML = filtered.map((w, i) => {
+    const origIdx = items.indexOf(w);
+    return `<div style="background:#fafbfc;border:1px solid #e8ecf2;border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="font-weight:600;color:#6a5acd;flex:1;">🏭 ${escHtml(w.name)}</span>
+        <span style="font-size:11px;color:#9aabb8;">${escHtml(w.supplier)}</span>
+        <button style="padding:2px 6px;font-size:10px;border:none;background:transparent;cursor:pointer;color:#9aabb8;" onclick="copyWarehouse(${origIdx})" title="一键复制仓库信息">📋</button>
+        <button style="padding:2px 6px;font-size:10px;border:none;background:transparent;cursor:pointer;color:#9aabb8;" onclick="editWarehouse(${origIdx})" title="编辑">✎</button>
+        <button style="padding:2px 6px;font-size:10px;border:none;background:transparent;cursor:pointer;color:#e0c0c0;" onclick="deleteWarehouse(${origIdx})" title="删除">✕</button>
+      </div>
+      ${w.address ? '<div style="font-size:11px;color:#6b7a90;">📍 ' + escHtml(w.address) + '</div>' : ''}
+      ${w.phone ? '<div style="font-size:11px;color:#6b7a90;">📞 ' + escHtml(w.phone) + '</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function addWarehouse() {
+  const name = prompt('仓库名称（如：深圳龙华仓）：');
+  if (!name || !name.trim()) return;
+  const supplier = prompt('配合商（如：海连）：');
+  if (!supplier || !supplier.trim()) return;
+  const address = prompt('地址（可选）：') || '';
+  const phone = prompt('电话（可选）：') || '';
+  const items = getWarehouses();
+  items.push({ name: name.trim(), supplier: supplier.trim(), address: address.trim(), phone: phone.trim() });
+  saveWarehouses(items);
+  renderWarehouses();
+}
+
+function editWarehouse(i) {
+  const items = getWarehouses();
+  const w = items[i];
+  const name = prompt('仓库名称：', w.name);
+  if (name === null) return;
+  if (!name.trim()) { deleteWarehouse(i); return; }
+  const supplier = prompt('配合商：', w.supplier);
+  if (supplier === null) return;
+  if (!supplier.trim()) { deleteWarehouse(i); return; }
+  const address = prompt('地址（可选）：', w.address || '') || '';
+  const phone = prompt('电话（可选）：', w.phone || '') || '';
+  items[i] = { name: name.trim(), supplier: supplier.trim(), address: address.trim(), phone: phone.trim() };
+  saveWarehouses(items);
+  renderWarehouses();
+}
+
+function deleteWarehouse(i) {
+  const items = getWarehouses();
+  items.splice(i, 1);
+  saveWarehouses(items);
+  renderWarehouses();
+}
+
+function copyWarehouse(i) {
+  const w = getWarehouses()[i];
+  if (!w) return;
+  const text = [w.address, w.phone, '', '师傅，如果需要拍照回传平台，麻烦不要拍到招牌或者抬头，拍货就可以，感谢感谢'].filter(Boolean).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ 已复制：' + w.name);
+  }).catch(() => showToast('复制失败', true));
+}
+
+renderWarehouses();
+
+// ---- 常用名单管理 ----
+const ROSTER_KEYS = { note: 'roster_note', salesperson: 'roster_salesperson', supplier: 'roster_supplier', warehouse: 'roster_warehouse' };
+
+function getRoster(field) {
+  try { return JSON.parse(localStorage.getItem(ROSTER_KEYS[field])) || []; }
+  catch { return []; }
+}
+function saveRoster(field, arr) { localStorage.setItem(ROSTER_KEYS[field], JSON.stringify(arr)); }
+
+// 核心：刷新某个字段的 datalist
+function refreshDatalist(field) {
+  let dl = document.getElementById('dl_' + field);
+  if (!dl) {
+    dl = document.createElement('datalist');
+    dl.id = 'dl_' + field;
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = '';
+  const seen = new Set();
+  // 先加载名单
+  getRoster(field).forEach(v => {
+    if (!seen.has(v)) {
+      seen.add(v);
+      const opt = document.createElement('option');
+      opt.value = v;
+      dl.appendChild(opt);
+    }
+  });
+  // 再从当前 DOM 上的卡片中收集已有值
+  const cfg = FIELD_CONFIG[field];
+  document.querySelectorAll(cfg.selector).forEach(el => {
+    const t = el.textContent.trim();
+    if (t && !t.startsWith('+') && !seen.has(t)) {
+      seen.add(t);
+      const opt = document.createElement('option');
+      opt.value = t;
+      dl.appendChild(opt);
+    }
+  });
+}
+
+function renderRosters() {
+  const idMap = { note: 'rosterNote', salesperson: 'rosterSalesperson', supplier: 'rosterSupplier', warehouse: 'rosterWarehouse' };
+  ['note', 'salesperson', 'supplier', 'warehouse'].forEach(field => {
+    const container = document.getElementById(idMap[field]);
+    if (!container) return;
+    const items = getRoster(field);
+    container.innerHTML = items.map((text, i) => `
+      <div class="template-item" style="display:flex;align-items:center;gap:4px;margin-bottom:3px;border:1px solid #e8ecf2;border-radius:6px;overflow:hidden;">
+        <span style="flex:1;padding:5px 8px;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#4a5a70;">${escHtml(text)}</span>
+        <button style="padding:3px 6px;font-size:10px;border:none;background:transparent;cursor:pointer;color:#9aabb8;" onclick="editRosterItem('${field}',${i})" title="编辑">✎</button>
+        <button style="padding:3px 6px;font-size:10px;border:none;background:transparent;cursor:pointer;color:#e0c0c0;" onclick="deleteRosterItem('${field}',${i})" title="删除">✕</button>
+      </div>
+    `).join('');
+    refreshDatalist(field);
+  });
+}
+
+function addRosterItem(field) {
+  const text = prompt('输入名称：');
+  if (!text || !text.trim()) return;
+  const items = getRoster(field);
+  items.push(text.trim());
+  saveRoster(field, items);
+  renderRosters();
+}
+
+function editRosterItem(field, i) {
+  const items = getRoster(field);
+  const text = prompt('编辑名称：', items[i]);
+  if (text === null) return;
+  if (!text.trim()) { deleteRosterItem(field, i); return; }
+  items[i] = text.trim();
+  saveRoster(field, items);
+  renderRosters();
+}
+
+function deleteRosterItem(field, i) {
+  const items = getRoster(field);
+  items.splice(i, 1);
+  saveRoster(field, items);
+  renderRosters();
+}
+
+// 初始化
+renderRosters();
+// render 完成后再次刷新 datalist
+setTimeout(() => { ['note','salesperson','supplier','warehouse'].forEach(refreshDatalist); }, 500);
+
+// ---- 备份 ----
+document.getElementById('btnBackup').addEventListener('click', async () => {
+  const history = await getHistory();
+  const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = url;
+  a.download = `data_backup_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ 备份已下载');
+});
+
+// ---- 快捷键 ----
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    document.getElementById('inputNo').focus();
+    document.getElementById('inputNo').select();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    refreshActive();
+  }
+});
 
 // ---- 加载 ----
 updateLangUI();

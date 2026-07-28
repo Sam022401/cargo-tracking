@@ -1,2 +1,5 @@
 node_modules/
 data.json
+wechat-bridge/node_modules/
+wechat-bridge/bridge-state.json
+wechat-bridge/*.log

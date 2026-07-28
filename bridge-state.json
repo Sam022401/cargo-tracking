@@ -1,0 +1,20 @@
+{
+  "lastPoll": "2026-06-03T17:12:27.469Z",
+  "waybills": {
+    "SQM26031615": {
+      "status": "in_transit",
+      "latestEventId": 1,
+      "lastNotifiedAt": "2026-06-03T17:12:27.469Z"
+    },
+    "SQM26050511": {
+      "status": "fail",
+      "latestEventId": null,
+      "lastNotifiedAt": "2026-06-03T17:12:27.469Z"
+    },
+    "SQM26031213": {
+      "status": "in_transit",
+      "latestEventId": 1,
+      "lastNotifiedAt": "2026-06-03T17:12:27.469Z"
+    }
+  }
+}

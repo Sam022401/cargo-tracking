@@ -1,0 +1,28 @@
+{
+  "coreServerUrl": "http://127.0.0.1:3000",
+  "wechat": {
+    "dllPath": "C:\\wechat-ferry\\wcferry.dll",
+    "botName": "货物跟踪助手",
+    "targetGroups": ["*"],
+    "masterWxids": [],
+    "autoReconnect": true,
+    "reconnectDelayMs": 30000
+  },
+  "polling": {
+    "intervalMinutes": 10,
+    "enabled": true,
+    "suppressInitialNotifications": true,
+    "notifyOnNewWaybill": true,
+    "notifyOnEventGrowth": false
+  },
+  "notifications": {
+    "statusChangeTemplate": "📦 {no}\n状态变更: {oldStatusLabel} → {newStatusLabel}\n{latestEvent}\n更新时间: {time}",
+    "mentionReplyTemplate": "@{senderName}\n单号: {no}\n状态: {statusLabel}\n{latestEvent}\n更新时间: {time}",
+    "mentionNoResultTemplate": "@{senderName} 未找到运单号 \"{input}\"，请确认单号后重试。\n示例: @{botName} SQM26031615",
+    "mentionRateLimitTemplate": "@{senderName} 查询过于频繁，请 {seconds} 秒后再试。"
+  },
+  "waybillPattern": "[A-Z]{2,6}\\d{6,12}",
+  "rateLimitSeconds": 30,
+  "stateFile": "./bridge-state.json",
+  "logLevel": "info"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "tracking-wechat-bridge",
+  "version": "1.0.0",
+  "description": "微信机器人桥接 - 货物跟踪看板推送与自动回复",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js"
+  },
+  "dependencies": {
+    "wechatferry": "^0.23.0"
+  }
+}

@@ -1,9 +1,10 @@
 {
   "name": "tracking-website",
   "version": "1.0.0",
-  "description": "轨迹查询网站 - 多单号跟踪查询工具",
+  "description": "轨迹查询网站 - 多单号跟踪查询工具 + 微信机器人推送",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "bridge": "node wechat-bridge/bridge.js"
   }
 }
