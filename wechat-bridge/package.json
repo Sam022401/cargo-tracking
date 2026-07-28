@@ -7,6 +7,6 @@
     "start": "node bridge.js"
   },
   "dependencies": {
-    "wechatferry": "^0.23.0"
+    "wechatferry": "^0.0.26"
   }
 }

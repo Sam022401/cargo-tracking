@@ -1054,13 +1054,17 @@
     <!-- 折叠后显示的展开小条 -->
     <div id="todayExpandStub" style="display:none;flex:0 0 28px;cursor:pointer;background:#fafbfc;border:1px solid #e0e6ee;border-radius:8px;writing-mode:vertical-rl;text-orientation:mixed;padding:8px 4px;font-size:12px;color:#6b7a90;user-select:none;" onclick="togglePanelToday()" title="展开今日查询">📅 今日查询 ▶</div>
 
-    <!-- 最右侧空白面板 -->
+    <!-- 最右侧日报面板 -->
     <div class="panel" id="panelRight" style="flex:0 0 0px;min-width:0;overflow:hidden;">
-      <div class="panel-header" style="justify-content:space-between;">
-        <span>📋 预留区</span>
+      <div class="panel-header">
+        📋 <span id="dailyReportTitle">日报</span>
+        <div class="panel-actions">
+          <button onclick="generateDailyReport()" title="刷新日报">🔄 刷新</button>
+          <button onclick="copyDailyReport()" title="一键复制日报">📋 复制</button>
+        </div>
       </div>
-      <div class="panel-body" style="padding:12px;color:#9aabb8;font-size:13px;text-align:center;">
-        拖拽左侧分隔条拉出此区域
+      <div class="panel-body" id="dailyReportBody" style="padding:10px 14px;font-size:13px;line-height:1.8;color:#1e293b;">
+        <div style="color:#8896a6;text-align:center;padding:20px 0;">点击 🔄 生成今日日报</div>
       </div>
     </div>
   </div>
@@ -2713,6 +2717,83 @@ document.addEventListener('keydown', function(e) {
     refreshActive();
   }
 });
+
+// ---- 日报 ----
+async function generateDailyReport() {
+  const history = await getHistory();
+  const entries = Object.entries(history);
+
+  // 按群名分组
+  const groups = {};
+  for (const [no, item] of entries) {
+    const gn = item.groupName || '未分组';
+    if (!groups[gn]) groups[gn] = [];
+    const status = calcStatus(item.result);
+    const label = statusLabel(status, currentLang);
+    const note = item.note || '';
+    groups[gn].push({ no, status, label, note });
+  }
+
+  const today = new Date();
+  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+  let html = '';
+  let plainText = '';
+
+  for (const [groupName, shipments] of Object.entries(groups)) {
+    const arriving = shipments.filter(s => s.status === 'arriving');
+    const inTransit = shipments.filter(s => s.status === 'in_transit');
+    const completed = shipments.filter(s => s.status === 'completed');
+
+    // 跳过分组如果没有任何进行中的
+    if (!arriving.length && !inTransit.length && !completed.length) continue;
+
+    html += `<div style="margin-bottom:16px;">`;
+    html += `<div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1e293b;">💬 ${escHtml(groupName)}</div>`;
+    html += `<div style="font-size:12px;color:#8896a6;margin-bottom:4px;">📦 货物日报 ${dateStr}</div>`;
+    html += `<div style="color:#c0c8d4;margin-bottom:4px;">━━━━━━━━━━━━</div>`;
+
+    plainText += `💬 ${groupName}\n📦 货物日报 ${dateStr}\n━━━━━━━━━━━━\n`;
+
+    if (arriving.length) {
+      const items = arriving.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
+      html += `<div style="margin-bottom:3px;">🔴 <b>快到港：</b>${escHtml(items)}</div>`;
+      plainText += `🔴 快到港：${arriving.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+    }
+    if (inTransit.length) {
+      const items = inTransit.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
+      html += `<div style="margin-bottom:3px;">🟡 <b>运输中：</b>${escHtml(items)}</div>`;
+      plainText += `🟡 运输中：${inTransit.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+    }
+    if (completed.length) {
+      const items = completed.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
+      html += `<div style="margin-bottom:3px;">✅ <b>已签收：</b>${escHtml(items)}</div>`;
+      plainText += `✅ 已签收：${completed.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+    }
+    html += `</div>`;
+    plainText += '\n';
+  }
+
+  if (!html) {
+    html = '<div style="color:#8896a6;text-align:center;padding:20px 0;">暂无进行中的单号</div>';
+    plainText = '暂无进行中的单号';
+  }
+
+  document.getElementById('dailyReportBody').innerHTML = html;
+  document.getElementById('dailyReportBody').setAttribute('data-plain-text', plainText);
+  showToast('✅ 日报已生成');
+}
+
+async function copyDailyReport() {
+  let text = document.getElementById('dailyReportBody').getAttribute('data-plain-text');
+  if (!text) {
+    await generateDailyReport();
+    text = document.getElementById('dailyReportBody').getAttribute('data-plain-text');
+  }
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('✅ 日报已复制');
+  }).catch(() => showToast('复制失败', true));
+}
 
 // ---- 加载 ----
 updateLangUI();

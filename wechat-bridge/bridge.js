@@ -48,8 +48,8 @@ async function main() {
 
   if (useWeChatFerry) {
     try {
-      const { createClient } = require('wechatferry');
-      wcf = createClient({ dllPath: config.wechat.dllPath });
+      const { Wechatferry } = require('wechatferry');
+      wcf = new Wechatferry({ dllPath: config.wechat.dllPath });
 
       wcf.on('message', (msg) => handler.handle(msg));
 
