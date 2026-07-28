@@ -74,6 +74,49 @@ class Notifier {
     this._send(msg, groupId);
   }
 
+  // 每日日报
+  async sendDailyReport(apiClient) {
+    const statuses = await apiClient.fetchAllStatuses();
+    const allHistory = await apiClient.fetchAllHistory();
+
+    // 按群名分组
+    const groups = {};
+    for (const [no, item] of Object.entries(allHistory)) {
+      const gn = item.groupName || '未分组';
+      if (!groups[gn]) groups[gn] = [];
+      const info = statuses[no] || {};
+      groups[gn].push({ no, item, status: info.statusLabel || '未知', content: info.latestEventContent || '' });
+    }
+
+    const today = new Date();
+    const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+
+    for (const [groupName, shipments] of Object.entries(groups)) {
+      const arriving = shipments.filter(s => s.status === '快到港');
+      const inTransit = shipments.filter(s => s.status === '运输中');
+      const completed = shipments.filter(s => s.status === '已完成');
+
+      let msg = `📦 货物日报 ${dateStr}\n━━━━━━━━━━━━\n`;
+      if (arriving.length) msg += `🔴 快到港：\n${arriving.map(s => '  ' + s.no).join('\n')}\n`;
+      if (inTransit.length) msg += `🟡 运输中：\n${inTransit.map(s => '  ' + s.no).join('\n')}\n`;
+      if (completed.length) msg += `✅ 已签收：\n${completed.map(s => '  ' + s.no).join('\n')}\n`;
+      msg += `━━━━━━━━━━━━`;
+
+      // 找到对应微信群
+      let targetGroupId = groupName; // 默认用群名当ID
+      if (this.wcf) {
+        try {
+          const contacts = this.wcf.getContacts();
+          const found = contacts.find(c => c.name === groupName && c.wxid?.includes('@chatroom'));
+          if (found) targetGroupId = found.wxid;
+        } catch {}
+      }
+
+      console.log(`[daily-report] 发送到 \"${groupName}\": ${shipments.length} 票`);
+      this._send(msg, targetGroupId);
+    }
+  }
+
   _send(msg, groupId, atWxids) {
     if (!this.wcf) {
       console.log('[notifier] (dry-run) to:', groupId, '| msg:', msg.substring(0, 80));

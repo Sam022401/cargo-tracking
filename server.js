@@ -127,7 +127,7 @@ const server = http.createServer(async (req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
       try {
-        const { note, salesperson, supplier, supplierNo, warehouse } = JSON.parse(body);
+        const { note, salesperson, supplier, supplierNo, warehouse, groupName } = JSON.parse(body);
         const history = loadHistory();
         if (history[no]) {
           if (note !== undefined) history[no].note = note || '';
@@ -135,6 +135,7 @@ const server = http.createServer(async (req, res) => {
           if (supplier !== undefined) history[no].supplier = supplier || '';
           if (supplierNo !== undefined) history[no].supplierNo = supplierNo || '';
           if (warehouse !== undefined) history[no].warehouse = warehouse || '';
+          if (groupName !== undefined) history[no].groupName = groupName || '';
           saveHistory(history);
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });

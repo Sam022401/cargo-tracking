@@ -73,6 +73,27 @@ async function main() {
     monitor.start();
   }
 
+  // 每日日报（早上 9:00 发送）
+  function scheduleDailyReport() {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(config.dailyReport?.hour || 9, config.dailyReport?.minute || 0, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    const delay = target.getTime() - now.getTime();
+
+    console.log('[daily-report] 首次发送:', target.toLocaleString(), '(' + Math.round(delay/60000) + '分钟后)');
+
+    setTimeout(() => {
+      notifier.sendDailyReport(apiClient);
+      // 每24小时重复
+      setInterval(() => notifier.sendDailyReport(apiClient), 24 * 60 * 60 * 1000);
+    }, delay);
+  }
+
+  if (config.dailyReport?.enabled) {
+    scheduleDailyReport();
+  }
+
   console.log('[bridge] 桥接启动完成');
   console.log('[bridge] WeChatFerry:', useWeChatFerry ? '已连接' : 'dry-run 模式');
   console.log('[bridge] 轮询间隔:', config.polling.intervalMinutes, '分钟');

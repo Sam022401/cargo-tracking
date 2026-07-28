@@ -509,6 +509,19 @@
   .card-warehouse:hover { border-color: #7c6aef; background: #ede4ff; }
   .card-warehouse.empty { color: #b0a8d0; font-style: italic; }
 
+  /* 群名标签 */
+  .card-group {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; color: #0d7a6e; background: #e6f7f4;
+    padding: 2px 7px; border-radius: 6px;
+    max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-group:hover { border-color: #10b981; background: #d1fae5; }
+  .card-group.empty { color: #a0c8c0; font-style: italic; }
+
   .card-header .arrow {
     transition: transform .2s; font-size: 12px; color: #9aabb8;
     flex-shrink: 0;
@@ -714,6 +727,11 @@
             <div style="font-size:12px;font-weight:600;color:#5a7a80;margin-bottom:4px;">🟠 配合商</div>
             <div id="rosterSupplier"></div>
             <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('supplier')">+ 添加配合商</button>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#0d7a6e;margin-bottom:4px;">💬 群名</div>
+            <div id="rosterGroupName"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('groupName')">+ 添加群名</button>
           </div>
           <div>
             <div style="font-size:12px;font-weight:600;color:#6a5acd;margin-bottom:4px;">🟣 仓库</div>
@@ -1380,6 +1398,7 @@ function matchesFilter(no, item) {
   if (item.supplier && item.supplier.toLowerCase().includes(filterText)) return true;
   if (item.supplierNo && item.supplierNo.toLowerCase().includes(filterText)) return true;
   if (item.warehouse && item.warehouse.toLowerCase().includes(filterText)) return true;
+  if (item.groupName && item.groupName.toLowerCase().includes(filterText)) return true;
   const ev = getLatestEvent(item.result);
   if (ev) {
     const c = eventContent(ev).toLowerCase();
@@ -1506,6 +1525,7 @@ function renderCardHTML(no, item) {
           <span class="card-sp${item.salesperson ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="salesperson" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加业务员', 'Click to add salesperson')}">${item.salesperson ? escHtml(item.salesperson) : (currentLang === 'zh' ? '+ 业务' : '+ Sales')}</span>
           <span class="card-supplier${item.supplier ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="supplier" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加上家配合商', 'Click to add supplier')}">${item.supplier ? escHtml(item.supplier) : (currentLang === 'zh' ? '+ 配合商' : '+ Supplier')}</span>
           <span class="card-warehouse${item.warehouse ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="warehouse" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加仓库', 'Click to add warehouse')}">${item.warehouse ? escHtml(item.warehouse) : (currentLang === 'zh' ? '+ 仓库' : '+ WH')}</span>
+          <span class="card-group${item.groupName ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="groupName" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加群名', 'Click to add group')}">${item.groupName ? escHtml(item.groupName) : (currentLang === 'zh' ? '+ 群名' : '+ Group')}</span>
           <span class="status-tag ${status}">${statusLabel(status, currentLang)}</span>
           <span style="flex:1;"></span>
           <span class="card-actions" onclick="event.stopPropagation();">
@@ -1989,7 +2009,7 @@ function exportCSV() {
     }
 
     const h = t;
-    const header = ['运单号', '状态', '客户', '业务员', '配合商', '仓库', '上家单号', '时效(天)', '最新轨迹', '更新时间', '剩余天数'];
+    const header = ['运单号', '状态', '客户', '业务员', '配合商', '仓库', '群名', '上家单号', '时效(天)', '最新轨迹', '更新时间', '剩余天数'];
     const rows = [header.map(c => '"' + c + '"').join(',')];
 
     for (const [no, item] of filtered) {
@@ -1999,6 +2019,7 @@ function exportCSV() {
       const supplier = item.supplier || '';
       const supplierNo = item.supplierNo || '';
       const warehouse = item.warehouse || '';
+      const groupName = item.groupName || '';
       const latest = getLatestEvent(item.result);
       const brief = latest ? eventContent(latest).replace(/"/g, '""') : '';
       const time = formatTime(item.updatedAt) || '';
@@ -2014,6 +2035,7 @@ function exportCSV() {
         '"' + sp + '"',
         '"' + supplier + '"',
         '"' + warehouse + '"',
+        '"' + groupName + '"',
         '"' + supplierNo + '"',
         '"' + transitStr + '"',
         '"' + brief + '"',
@@ -2082,6 +2104,13 @@ const FIELD_CONFIG = {
     zh_placeholder: '仓库',
     en_placeholder: 'Warehouse',
     selector: '.card-warehouse',
+  },
+  groupName: {
+    zh_empty: '+ 群名',
+    en_empty: '+ Group',
+    zh_placeholder: '群名',
+    en_placeholder: 'Group',
+    selector: '.card-group',
   },
 };
 
@@ -2570,7 +2599,7 @@ function copyWarehouse(i) {
 renderWarehouses();
 
 // ---- 常用名单管理 ----
-const ROSTER_KEYS = { note: 'roster_note', salesperson: 'roster_salesperson', supplier: 'roster_supplier', warehouse: 'roster_warehouse' };
+const ROSTER_KEYS = { note: 'roster_note', salesperson: 'roster_salesperson', supplier: 'roster_supplier', warehouse: 'roster_warehouse', groupName: 'roster_groupName' };
 
 function getRoster(field) {
   try { return JSON.parse(localStorage.getItem(ROSTER_KEYS[field])) || []; }
@@ -2611,8 +2640,8 @@ function refreshDatalist(field) {
 }
 
 function renderRosters() {
-  const idMap = { note: 'rosterNote', salesperson: 'rosterSalesperson', supplier: 'rosterSupplier', warehouse: 'rosterWarehouse' };
-  ['note', 'salesperson', 'supplier', 'warehouse'].forEach(field => {
+  const idMap = { note: 'rosterNote', salesperson: 'rosterSalesperson', supplier: 'rosterSupplier', warehouse: 'rosterWarehouse', groupName: 'rosterGroupName' };
+  ['note', 'salesperson', 'supplier', 'warehouse', 'groupName'].forEach(field => {
     const container = document.getElementById(idMap[field]);
     if (!container) return;
     const items = getRoster(field);
@@ -2656,7 +2685,7 @@ function deleteRosterItem(field, i) {
 // 初始化
 renderRosters();
 // render 完成后再次刷新 datalist
-setTimeout(() => { ['note','salesperson','supplier','warehouse'].forEach(refreshDatalist); }, 500);
+setTimeout(() => { ['note','salesperson','supplier','warehouse','groupName'].forEach(refreshDatalist); }, 500);
 
 // ---- 备份 ----
 document.getElementById('btnBackup').addEventListener('click', async () => {

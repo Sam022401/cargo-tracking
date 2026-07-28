@@ -52,4 +52,9 @@ function trackWaybill(no) {
   return request('POST', '/api/track', 'no=' + encodeURIComponent(no));
 }
 
-module.exports = { setServerUrl, fetchAllStatuses, fetchWaybillStatus, replyLookup, trackWaybill };
+// 获取全部历史（含备注/群名等字段）
+function fetchAllHistory() {
+  return request('GET', '/api/history');
+}
+
+module.exports = { setServerUrl, fetchAllStatuses, fetchWaybillStatus, replyLookup, trackWaybill, fetchAllHistory };
