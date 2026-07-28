@@ -522,6 +522,19 @@
   .card-group:hover { border-color: #10b981; background: #d1fae5; }
   .card-group.empty { color: #a0c8c0; font-style: italic; }
 
+  /* 船名航次 */
+  .card-vessel {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 11px; color: #1a56c4; background: #e8f0fe;
+    padding: 2px 7px; border-radius: 6px;
+    max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; cursor: pointer; transition: .15s;
+    border: 1px dashed transparent;
+    flex-shrink: 0;
+  }
+  .card-vessel:hover { border-color: #4a7cf7; background: #d0e0fd; }
+  .card-vessel.empty { color: #b0c8e0; font-style: italic; }
+
   .card-header .arrow {
     transition: transform .2s; font-size: 12px; color: #9aabb8;
     flex-shrink: 0;
@@ -727,6 +740,11 @@
             <div style="font-size:12px;font-weight:600;color:#5a7a80;margin-bottom:4px;">🟠 配合商</div>
             <div id="rosterSupplier"></div>
             <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('supplier')">+ 添加配合商</button>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:600;color:#1a56c4;margin-bottom:4px;">🚢 船名航次</div>
+            <div id="rosterVessel"></div>
+            <button class="template-item" style="border-style:dashed;color:#b0bcc8;font-size:11px;" onclick="addRosterItem('vessel')">+ 添加船名</button>
           </div>
           <div style="margin-bottom:8px;">
             <div style="font-size:12px;font-weight:600;color:#0d7a6e;margin-bottom:4px;">💬 群名</div>
@@ -1403,6 +1421,7 @@ function matchesFilter(no, item) {
   if (item.supplierNo && item.supplierNo.toLowerCase().includes(filterText)) return true;
   if (item.warehouse && item.warehouse.toLowerCase().includes(filterText)) return true;
   if (item.groupName && item.groupName.toLowerCase().includes(filterText)) return true;
+  if (item.vessel && item.vessel.toLowerCase().includes(filterText)) return true;
   const ev = getLatestEvent(item.result);
   if (ev) {
     const c = eventContent(ev).toLowerCase();
@@ -1529,6 +1548,7 @@ function renderCardHTML(no, item) {
           <span class="card-sp${item.salesperson ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="salesperson" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加业务员', 'Click to add salesperson')}">${item.salesperson ? escHtml(item.salesperson) : (currentLang === 'zh' ? '+ 业务' : '+ Sales')}</span>
           <span class="card-supplier${item.supplier ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="supplier" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加上家配合商', 'Click to add supplier')}">${item.supplier ? escHtml(item.supplier) : (currentLang === 'zh' ? '+ 配合商' : '+ Supplier')}</span>
           <span class="card-warehouse${item.warehouse ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="warehouse" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加仓库', 'Click to add warehouse')}">${item.warehouse ? escHtml(item.warehouse) : (currentLang === 'zh' ? '+ 仓库' : '+ WH')}</span>
+          <span class="card-vessel${item.vessel ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="vessel" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加船名航次', 'Click to add vessel')}">${item.vessel ? escHtml(item.vessel) : (currentLang === 'zh' ? '+ 船名' : '+ Vessel')}</span>
           <span class="card-group${item.groupName ? '' : ' empty'}" data-no="${escHtml(no)}" data-field="groupName" onclick="event.stopPropagation();startEditField(this)" title="${t('点击添加群名', 'Click to add group')}">${item.groupName ? escHtml(item.groupName) : (currentLang === 'zh' ? '+ 群名' : '+ Group')}</span>
           <span class="status-tag ${status}">${statusLabel(status, currentLang)}</span>
           <span style="flex:1;"></span>
@@ -2013,7 +2033,7 @@ function exportCSV() {
     }
 
     const h = t;
-    const header = ['运单号', '状态', '客户', '业务员', '配合商', '仓库', '群名', '上家单号', '时效(天)', '最新轨迹', '更新时间', '剩余天数'];
+    const header = ['运单号', '状态', '客户', '业务员', '配合商', '仓库', '船名航次', '群名', '上家单号', '时效(天)', '最新轨迹', '更新时间', '剩余天数'];
     const rows = [header.map(c => '"' + c + '"').join(',')];
 
     for (const [no, item] of filtered) {
@@ -2023,6 +2043,7 @@ function exportCSV() {
       const supplier = item.supplier || '';
       const supplierNo = item.supplierNo || '';
       const warehouse = item.warehouse || '';
+      const vessel = item.vessel || '';
       const groupName = item.groupName || '';
       const latest = getLatestEvent(item.result);
       const brief = latest ? eventContent(latest).replace(/"/g, '""') : '';
@@ -2039,6 +2060,7 @@ function exportCSV() {
         '"' + sp + '"',
         '"' + supplier + '"',
         '"' + warehouse + '"',
+        '"' + vessel + '"',
         '"' + groupName + '"',
         '"' + supplierNo + '"',
         '"' + transitStr + '"',
@@ -2108,6 +2130,13 @@ const FIELD_CONFIG = {
     zh_placeholder: '仓库',
     en_placeholder: 'Warehouse',
     selector: '.card-warehouse',
+  },
+  vessel: {
+    zh_empty: '+ 船名',
+    en_empty: '+ Vessel',
+    zh_placeholder: '船名航次',
+    en_placeholder: 'Vessel/Voy',
+    selector: '.card-vessel',
   },
   groupName: {
     zh_empty: '+ 群名',
@@ -2603,7 +2632,7 @@ function copyWarehouse(i) {
 renderWarehouses();
 
 // ---- 常用名单管理 ----
-const ROSTER_KEYS = { note: 'roster_note', salesperson: 'roster_salesperson', supplier: 'roster_supplier', warehouse: 'roster_warehouse', groupName: 'roster_groupName' };
+const ROSTER_KEYS = { note: 'roster_note', salesperson: 'roster_salesperson', supplier: 'roster_supplier', warehouse: 'roster_warehouse', vessel: 'roster_vessel', groupName: 'roster_groupName' };
 
 function getRoster(field) {
   try { return JSON.parse(localStorage.getItem(ROSTER_KEYS[field])) || []; }
@@ -2644,8 +2673,8 @@ function refreshDatalist(field) {
 }
 
 function renderRosters() {
-  const idMap = { note: 'rosterNote', salesperson: 'rosterSalesperson', supplier: 'rosterSupplier', warehouse: 'rosterWarehouse', groupName: 'rosterGroupName' };
-  ['note', 'salesperson', 'supplier', 'warehouse', 'groupName'].forEach(field => {
+  const idMap = { note: 'rosterNote', salesperson: 'rosterSalesperson', supplier: 'rosterSupplier', warehouse: 'rosterWarehouse', vessel: 'rosterVessel', groupName: 'rosterGroupName' };
+  ['note', 'salesperson', 'supplier', 'warehouse', 'vessel', 'groupName'].forEach(field => {
     const container = document.getElementById(idMap[field]);
     if (!container) return;
     const items = getRoster(field);
@@ -2689,7 +2718,7 @@ function deleteRosterItem(field, i) {
 // 初始化
 renderRosters();
 // render 完成后再次刷新 datalist
-setTimeout(() => { ['note','salesperson','supplier','warehouse','groupName'].forEach(refreshDatalist); }, 500);
+setTimeout(() => { ['note','salesperson','supplier','warehouse','vessel','groupName'].forEach(refreshDatalist); }, 500);
 
 // ---- 备份 ----
 document.getElementById('btnBackup').addEventListener('click', async () => {
@@ -2719,23 +2748,47 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ---- 日报 ----
+function getNextAction(status) {
+  if (status === 'arriving') return '→ 安排派送';
+  if (status === 'in_transit') return '→ 等待到港';
+  if (status === 'pending') return '→ 待更新轨迹';
+  if (status === 'completed') return '→ 已完成';
+  return '';
+}
+
+function getETADateStr(item) {
+  const eta = getETADate(item);
+  if (eta) {
+    const m = eta.getMonth() + 1;
+    const d = eta.getDate();
+    return `${m}/${d}`;
+  }
+  // fallback: days remaining
+  const days = getDaysRemaining(item);
+  if (days !== null && days >= 0) return `${days}天后`;
+  return '';
+}
+
 async function generateDailyReport() {
   const history = await getHistory();
   const entries = Object.entries(history);
 
-  // 按群名分组
   const groups = {};
   for (const [no, item] of entries) {
     const gn = item.groupName || '未分组';
     if (!groups[gn]) groups[gn] = [];
     const status = calcStatus(item.result);
-    const label = statusLabel(status, currentLang);
     const note = item.note || '';
-    groups[gn].push({ no, status, label, note });
+    const vessel = item.vessel || '';
+    groups[gn].push({ no, status, note, vessel });
   }
 
   const today = new Date();
-  const dateStr = `${today.getMonth()+1}/${today.getDate()}`;
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekDay = weekDays[today.getDay()];
+  const dateStr = `${month}/${day} 周${weekDay}`;
 
   let html = '';
   let plainText = '';
@@ -2744,31 +2797,47 @@ async function generateDailyReport() {
     const arriving = shipments.filter(s => s.status === 'arriving');
     const inTransit = shipments.filter(s => s.status === 'in_transit');
     const completed = shipments.filter(s => s.status === 'completed');
-
-    // 跳过分组如果没有任何进行中的
     if (!arriving.length && !inTransit.length && !completed.length) continue;
 
     html += `<div style="margin-bottom:16px;">`;
-    html += `<div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#1e293b;">💬 ${escHtml(groupName)}</div>`;
-    html += `<div style="font-size:12px;color:#8896a6;margin-bottom:4px;">📦 货物日报 ${dateStr}</div>`;
-    html += `<div style="color:#c0c8d4;margin-bottom:4px;">━━━━━━━━━━━━</div>`;
-
-    plainText += `💬 ${groupName}\n📦 货物日报 ${dateStr}\n━━━━━━━━━━━━\n`;
+    html += `<div style="font-weight:700;font-size:14px;color:#1e293b;">💬 ${escHtml(groupName)}</div>`;
+    html += `<div style="font-size:12px;color:#8896a6;margin-bottom:6px;">📦 货物日报 ${dateStr}</div>`;
+    plainText += `💬 ${groupName}\n📦 货物日报 ${dateStr}\n`;
 
     if (arriving.length) {
-      const items = arriving.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
-      html += `<div style="margin-bottom:3px;">🔴 <b>快到港：</b>${escHtml(items)}</div>`;
-      plainText += `🔴 快到港：${arriving.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+      html += `<div style="font-weight:600;font-size:12px;color:#c62828;margin-bottom:2px;">🔴 快到港 — 安排派送</div>`;
+      plainText += `🔴 快到港 — 安排派送\n`;
+      arriving.forEach(s => {
+        const hItem = history[s.no];
+        const eta = getETADateStr(hItem);
+        const line = `  ${s.no}${s.note ? ' ' + s.note : ''}${s.vessel ? ' [' + s.vessel + ']' : ''}${eta ? ' 预计' + eta + '到港' : ''}`;
+        html += `<div style="font-size:12px;margin-bottom:1px;color:#5a3a3a;">${escHtml(line)}</div>`;
+        plainText += line + '\n';
+      });
     }
     if (inTransit.length) {
-      const items = inTransit.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
-      html += `<div style="margin-bottom:3px;">🟡 <b>运输中：</b>${escHtml(items)}</div>`;
-      plainText += `🟡 运输中：${inTransit.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+      html += `<div style="font-weight:600;font-size:12px;color:#1a56c4;margin-bottom:2px;margin-top:6px;">🟡 运输中 — 等待到港</div>`;
+      plainText += `🟡 运输中 — 等待到港\n`;
+      inTransit.forEach(s => {
+        const hItem = history[s.no];
+        const transit = getTransitInfo(hItem);
+        const eta = getETADateStr(hItem);
+        const line = `  ${s.no}${s.note ? ' ' + s.note : ''}${s.vessel ? ' [' + s.vessel + ']' : ''}${eta ? ' 预计' + eta + '到港' : ''}${transit ? ' 已运输' + transit.totalDays + '天' : ''}`;
+        html += `<div style="font-size:12px;margin-bottom:1px;color:#4a5a70;">${escHtml(line)}</div>`;
+        plainText += line + '\n';
+      });
     }
     if (completed.length) {
-      const items = completed.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、');
-      html += `<div style="margin-bottom:3px;">✅ <b>已签收：</b>${escHtml(items)}</div>`;
-      plainText += `✅ 已签收：${completed.map(s => s.no + (s.note ? ' ' + s.note : '')).join('、')}\n`;
+      html += `<div style="font-weight:600;font-size:12px;color:#1e7d2e;margin-bottom:2px;margin-top:6px;">✅ 已签收</div>`;
+      plainText += `✅ 已签收\n`;
+      completed.forEach(s => {
+        const hItem = history[s.no];
+        const latest = getLatestEvent(hItem.result);
+        const signDate = latest ? (latest.created || '').substring(0, 10) : '';
+        const line = `  ${s.no}${s.note ? ' ' + s.note : ''}${s.vessel ? ' [' + s.vessel + ']' : ''}${signDate ? ' ' + signDate : ''}`;
+        html += `<div style="font-size:12px;margin-bottom:1px;color:#6b7a6b;">${escHtml(line)}</div>`;
+        plainText += line + '\n';
+      });
     }
     html += `</div>`;
     plainText += '\n';

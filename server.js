@@ -136,6 +136,7 @@ const server = http.createServer(async (req, res) => {
           if (supplierNo !== undefined) history[no].supplierNo = supplierNo || '';
           if (warehouse !== undefined) history[no].warehouse = warehouse || '';
           if (groupName !== undefined) history[no].groupName = groupName || '';
+          if (vessel !== undefined) history[no].vessel = vessel || '';
           saveHistory(history);
         }
         res.writeHead(200, { 'Content-Type': 'application/json' });
